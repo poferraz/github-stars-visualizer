@@ -53,6 +53,23 @@
 
 ---
 
+## 📸 Screenshots & Artwork
+
+<p align="center">
+  <img src="readme-poster.png" alt="GitStars Map Promotional Poster" width="100%" />
+</p>
+
+<p align="center">
+  <img src="screenshots/Screenshot%202026-06-06%20at%2012.41.21%20PM.png" width="48%" alt="Mind Map Setup" />
+  <img src="screenshots/Screenshot%202026-06-06%20at%2012.54.34%20PM.png" width="48%" alt="Obsidian style force graph" />
+</p>
+<p align="center">
+  <img src="screenshots/Screenshot%202026-06-06%20at%2012.57.22%20PM.png" width="48%" alt="Settings and API Configuration" />
+  <img src="screenshots/Screenshot%202026-06-06%20at%2012.58.24%20PM.png" width="48%" alt="Retro CRT scanline filters" />
+</p>
+
+---
+
 ## 🔒 Security-First Architecture
 
 We take privacy and API billing security seriously:
@@ -133,7 +150,28 @@ You will need:
 
 ---
 
+## 🤝 Contributing
+
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started on setting up the local dev environment, styling specifications, and TDD workflow instructions.
+
+---
+
+## 💎 Credits & Open Source Acknowledgements
+
+This project was built possible by these fantastic open-source libraries, assets, and inspirations:
+
+*   **Frontend & Tooling:** [React 19](https://react.dev/), [Vite 8](https://vite.dev/), [ESLint](https://eslint.org/)
+*   **Data Visualization:** [force-graph (HTML5 Canvas)](https://github.com/vasturiano/force-graph) by Vasco Asturiano
+*   **AI Integration:** [@google/generative-ai SDK](https://github.com/google/generative-ai-js)
+*   **Icons:** [Lucide React](https://lucide.dev/)
+*   **Testing Suite:** [Vitest 4](https://vitest.dev/)
+*   **Typography:** [Google Fonts: VT323](https://fonts.google.com/specimen/VT323) (nostalgic pixel font) and [Google Fonts: Courier Prime](https://fonts.google.com/specimen/Courier+Prime) (monospace console font)
+*   **Visual Style & Retro Design:** Classic Windows 95/98 styling and beveled theme designs.
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
 
