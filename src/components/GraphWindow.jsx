@@ -135,7 +135,7 @@ export default function GraphWindow({
     return () => {
       resizeObserver.disconnect();
       if (graphInstanceRef.current) {
-        graphInstanceRef.current.onEngineStop(null);
+        graphInstanceRef.current.onEngineStop(() => {});
       }
       graphInstanceRef.current = null;
     };
@@ -189,8 +189,7 @@ export default function GraphWindow({
     graph.d3Force('charge').strength(node => node.type === 'category' ? gravity * 3 : gravity);
     graph.d3Force('link').distance(link => link.type === 'semantic_connection' ? linkDistance * 1.5 : linkDistance);
     graph.d3Force('collide').radius(node => node.val + collisionRadius);
-    graph.numDimensions(2); // force recalculation of layout
-    graph.alpha(1).restart(); // cooling decay reset
+    graph.d3ReheatSimulation(); // reheat layout simulation after changes
   }, [gravity, linkDistance, collisionRadius]);
 
   const handleZoomFit = () => {
