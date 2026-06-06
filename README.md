@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screenshots/banner.png" alt="GitStars Map - Retro OS Edition" width="100%" />
+  <img src="banner.png" alt="GitStars Map - Retro OS Edition" width="100%" />
 </p>
 
 <h1 align="center">🕸️ GitStars Map - Retro OS Edition v1.0</h1>
