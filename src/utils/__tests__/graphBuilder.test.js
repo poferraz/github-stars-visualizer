@@ -79,4 +79,14 @@ describe('Graph Data Builder Utility', () => {
     expect(graphData.nodes.filter(n => n.type === 'category')[0].id).toBe('Uncategorized');
     expect(graphData.links.filter(l => l.type === 'belongs_to')).toHaveLength(2);
   });
+
+  it('should filter repositories by language and minStars', () => {
+    const filters = { languages: ['TypeScript'], minStars: 80 };
+    const graphData = buildGraphData(mockRepos, mockAiAnalysis, filters);
+
+    // repo-a is JavaScript (100 stars) - excluded by language
+    // repo-b is TypeScript (50 stars) - excluded by minStars
+    expect(graphData.nodes.filter(n => n.type === 'repo')).toHaveLength(0);
+    expect(graphData.nodes.filter(n => n.type === 'category')).toHaveLength(0);
+  });
 });

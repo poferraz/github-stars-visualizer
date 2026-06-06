@@ -1,10 +1,28 @@
-export function buildGraphData(repositories = [], aiAnalysis = {}) {
+export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {}) {
+  const { languages, minStars } = filters;
+
+  const filteredRepositories = repositories.filter((repo) => {
+    if (minStars !== undefined && minStars !== null && (repo.stargazers_count || 0) < minStars) {
+      return false;
+    }
+    if (languages && languages.length > 0) {
+      const repoLang = repo.language || 'Unknown';
+      const isMatched = languages.some(
+        (lang) => lang.toLowerCase() === repoLang.toLowerCase()
+      );
+      if (!isMatched) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   const nodes = [];
   const links = [];
   const categories = new Set();
 
   // 1. Gather all unique categories
-  repositories.forEach((repo) => {
+  filteredRepositories.forEach((repo) => {
     const analysis = aiAnalysis[repo.full_name];
     const category = (analysis && analysis.category) ? analysis.category.trim() : 'Uncategorized';
     categories.add(category);
@@ -22,10 +40,10 @@ export function buildGraphData(repositories = [], aiAnalysis = {}) {
   });
 
   // 3. Keep track of available repo IDs for validation of semantic links
-  const availableRepoIds = new Set(repositories.map(r => r.full_name));
+  const availableRepoIds = new Set(filteredRepositories.map(r => r.full_name));
 
   // 4. Add repo nodes and category connections
-  repositories.forEach((repo) => {
+  filteredRepositories.forEach((repo) => {
     const analysis = aiAnalysis[repo.full_name];
     const category = (analysis && analysis.category) ? analysis.category.trim() : 'Uncategorized';
     const summary = (analysis && analysis.summary) ? analysis.summary : (repo.description || 'No description provided.');
