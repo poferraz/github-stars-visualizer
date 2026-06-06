@@ -50,6 +50,15 @@ Make sure all repository names used as keys and in the related array match the i
     }
   }
 
+  const firstBrace = cleanJson.indexOf('{');
+  const lastBrace = cleanJson.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleanJson = cleanJson.slice(firstBrace, lastBrace + 1);
+  }
+
+  // Remove trailing commas
+  cleanJson = cleanJson.replace(/,\s*([\]}])/g, '$1');
+
   try {
     return JSON.parse(cleanJson);
   } catch (err) {
