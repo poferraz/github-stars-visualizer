@@ -24,7 +24,10 @@ export const aiRouter = {
             {
               parts: [{ text: prompt }]
             }
-          ]
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json'
+          }
         };
         break;
       }
@@ -35,7 +38,8 @@ export const aiRouter = {
         headers['X-Title'] = 'GitStars Visualizer';
         body = {
           model: model || 'google/gemini-2.5-flash',
-          messages: [{ role: 'user', content: prompt }]
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
         };
         break;
       }
@@ -44,7 +48,8 @@ export const aiRouter = {
         headers['Authorization'] = `Bearer ${apiKey}`;
         body = {
           model: model || 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }]
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
         };
         break;
       }
@@ -53,7 +58,8 @@ export const aiRouter = {
         headers['Authorization'] = `Bearer ${apiKey}`;
         body = {
           model: model || 'llama3-8b-8192',
-          messages: [{ role: 'user', content: prompt }]
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' }
         };
         break;
       }

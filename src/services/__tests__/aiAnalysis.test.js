@@ -67,6 +67,30 @@ describe('AI Stars Analysis Coordinator', () => {
     expect(result['owner/repo'].category).toBe('Web Dev');
   });
 
+  it('should successfully parse JSON containing trailing commas and conversational text', async () => {
+    const mockResponse = `Here is your JSON response:
+    {
+      "owner/repo": {
+        "category": "Web Dev",
+        "summary": "A framework.",
+        "related": [],
+      },
+    }
+    Hope this helps!`;
+
+    aiRouter.sendMessage.mockResolvedValueOnce(mockResponse);
+
+    const result = await analyzeStars({
+      repositories: [{ full_name: 'owner/repo', description: 'desc', language: 'JS' }],
+      provider: 'gemini',
+      apiKey: 'key',
+      model: 'model'
+    });
+
+    expect(result).toHaveProperty('owner/repo');
+    expect(result['owner/repo'].category).toBe('Web Dev');
+  });
+
   it('should throw an error if JSON is completely invalid', async () => {
     aiRouter.sendMessage.mockResolvedValueOnce('This is not JSON at all');
 
