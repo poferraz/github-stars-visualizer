@@ -18,20 +18,52 @@ export default function App() {
   const [selectedIcon, setSelectedIcon] = useState(null);
 
   // 2. Settings State
-  const [settings, setSettings] = useState({
-    username: '',
-    githubToken: '',
-    maxStars: 50,
-    provider: 'gemini',
-    apiKey: '',
-    model: 'gemini-2.5-flash',
-    customUrl: ''
+  const [settings, setSettings] = useState(() => {
+    try {
+      const stored = localStorage.getItem('gitstars_settings');
+      return stored ? JSON.parse(stored) : {
+        username: '',
+        githubToken: '',
+        maxStars: 50,
+        provider: 'gemini',
+        apiKey: '',
+        model: 'gemini-2.5-flash',
+        customUrl: ''
+      };
+    } catch (e) {
+      return { username: '', githubToken: '', maxStars: 50, provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash', customUrl: '' };
+    }
   });
 
   // 3. Cache & Computed Data
-  const [repositories, setRepositories] = useState([]);
-  const [aiAnalysis, setAiAnalysis] = useState({});
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [repositories, setRepositories] = useState(() => {
+    try {
+      const stored = localStorage.getItem('gitstars_cached_repos');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [aiAnalysis, setAiAnalysis] = useState(() => {
+    try {
+      const stored = localStorage.getItem('gitstars_cached_ai');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [graphData, setGraphData] = useState(() => {
+    try {
+      const storedRepos = localStorage.getItem('gitstars_cached_repos');
+      const storedAi = localStorage.getItem('gitstars_cached_ai');
+      if (storedRepos && storedAi) {
+        return buildGraphData(JSON.parse(storedRepos), JSON.parse(storedAi));
+      }
+    } catch (e) {
+      console.error('Failed to parse localStorage cache during initialization:', e);
+    }
+    return { nodes: [], links: [] };
+  });
   const [selectedNode, setSelectedNode] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -92,28 +124,7 @@ export default function App() {
     }
   });
 
-  // Load configuration and cached data on mount
-  useEffect(() => {
-    try {
-      const storedSettings = localStorage.getItem('gitstars_settings');
-      if (storedSettings) {
-        setSettings(JSON.parse(storedSettings));
-      }
 
-      const storedRepos = localStorage.getItem('gitstars_cached_repos');
-      const storedAi = localStorage.getItem('gitstars_cached_ai');
-      
-      if (storedRepos && storedAi) {
-        const repos = JSON.parse(storedRepos);
-        const ai = JSON.parse(storedAi);
-        setRepositories(repos);
-        setAiAnalysis(ai);
-        setGraphData(buildGraphData(repos, ai));
-      }
-    } catch (e) {
-      console.error('Failed to parse localStorage cache:', e);
-    }
-  }, []);
 
   // Window focusing / Layer management
   const focusWindow = (id) => {

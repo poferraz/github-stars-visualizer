@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { audio } from '../utils/audio';
 import { aiRouter } from '../services/aiRouter';
 
@@ -13,6 +13,16 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
 
   // Testing connection state
   const [testStatus, setTestStatus] = useState({ state: 'idle', message: '' });
+
+  useEffect(() => {
+    setUsername(settings.username || '');
+    setGithubToken(settings.githubToken || '');
+    setMaxStars(settings.maxStars || 50);
+    setProvider(settings.provider || 'gemini');
+    setApiKey(settings.apiKey || '');
+    setModel(settings.model || 'gemini-2.5-flash');
+    setCustomUrl(settings.customUrl || '');
+  }, [settings]);
 
   const handleSave = (e) => {
     e.preventDefault();
