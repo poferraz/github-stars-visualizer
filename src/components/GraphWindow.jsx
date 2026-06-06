@@ -19,6 +19,9 @@ export default function GraphWindow({
   const graphInstanceRef = useRef(null);
   const [showSemantic, setShowSemantic] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [gravity, setGravity] = useState(-150);
+  const [linkDistance, setLinkDistance] = useState(100);
+  const [collisionRadius, setCollisionRadius] = useState(20);
   const hasZoomedRef = useRef(false);
 
   // Store dynamic props in refs for canvas rendering and event handlers
@@ -178,6 +181,18 @@ export default function GraphWindow({
     }
   }, [searchQuery, selectedNodeId]);
 
+  // Handle dynamic update of D3 physics force settings
+  useEffect(() => {
+    const graph = graphInstanceRef.current;
+    if (!graph) return;
+    
+    graph.d3Force('charge').strength(node => node.type === 'category' ? gravity * 3 : gravity);
+    graph.d3Force('link').distance(link => link.type === 'semantic_connection' ? linkDistance * 1.5 : linkDistance);
+    graph.d3Force('collide').radius(node => node.val + collisionRadius);
+    graph.numDimensions(2); // force recalculation of layout
+    graph.alpha(1).restart(); // cooling decay reset
+  }, [gravity, linkDistance, collisionRadius]);
+
   const handleZoomFit = () => {
     audio.playClick();
     if (graphInstanceRef.current) {
@@ -310,6 +325,78 @@ export default function GraphWindow({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#666' }}>
                 <span>0</span>
                 <span>{maxStarsLimit}</span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ borderTop: '1.5px solid var(--os-shadow)', borderBottom: '1.5px solid var(--os-light)', margin: '6px 0' }} />
+
+            {/* Physics Settings Header */}
+            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Physics Config:</div>
+
+            {/* Gravity Slider */}
+            <div className="win95-raised" style={{ padding: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '4px' }}>
+                <span>Repulsion:</span>
+                <span style={{ color: '#0000ff' }}>{-gravity}</span>
+              </div>
+              <input 
+                type="range" 
+                min="50" 
+                max="1000"
+                value={-gravity}
+                style={{ width: '100%', cursor: 'pointer' }}
+                onChange={(e) => {
+                  setGravity(-Number(e.target.value));
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#666' }}>
+                <span>50</span>
+                <span>1000</span>
+              </div>
+            </div>
+
+            {/* Link Distance Slider */}
+            <div className="win95-raised" style={{ padding: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '4px' }}>
+                <span>Link Distance:</span>
+                <span style={{ color: '#0000ff' }}>{linkDistance}</span>
+              </div>
+              <input 
+                type="range" 
+                min="30" 
+                max="300"
+                value={linkDistance}
+                style={{ width: '100%', cursor: 'pointer' }}
+                onChange={(e) => {
+                  setLinkDistance(Number(e.target.value));
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#666' }}>
+                <span>30</span>
+                <span>300</span>
+              </div>
+            </div>
+
+            {/* Collision Cushion Slider */}
+            <div className="win95-raised" style={{ padding: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '4px' }}>
+                <span>Collision Cushion:</span>
+                <span style={{ color: '#0000ff' }}>{collisionRadius}</span>
+              </div>
+              <input 
+                type="range" 
+                min="5" 
+                max="50"
+                value={collisionRadius}
+                style={{ width: '100%', cursor: 'pointer' }}
+                onChange={(e) => {
+                  setCollisionRadius(Number(e.target.value));
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#666' }}>
+                <span>5</span>
+                <span>50</span>
               </div>
             </div>
           </div>
