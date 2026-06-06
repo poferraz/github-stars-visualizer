@@ -9,6 +9,17 @@
 </p>
 
 <p align="center">
+  <a href="https://git-start.vercel.app/">
+    <img src="https://img.shields.io/badge/Live_Demo-Try_It_Online-FF5733?style=for-the-badge&logo=vercel" alt="Live Demo" />
+  </a>
+</p>
+
+<p align="center">
+  <strong>⚡ Try it online! Link your read-only token and explore your stars instantly: <a href="https://git-start.vercel.app/">git-start.vercel.app</a> ⚡</strong>
+</p>
+
+
+<p align="center">
   <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite" alt="Vite 8" />
   <img src="https://img.shields.io/badge/Vitest-4-76E1FE?style=for-the-badge&logo=vitest" alt="Vitest 4" />
