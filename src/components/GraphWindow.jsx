@@ -105,12 +105,6 @@ export default function GraphWindow({
       .linkDirectionalParticleSpeed(0.006)
       .linkDirectionalParticleColor(() => '#00ffff')
       .linkDirectionalParticleWidth(2)
-      .onNodeClick(node => {
-        audio.playClick();
-        if (onSelectNodeRef.current) {
-          onSelectNodeRef.current(node);
-        }
-      })
       .backgroundColor('#0d0d0d');
 
     // Add repulsion, distance, and collision forces
@@ -134,6 +128,60 @@ export default function GraphWindow({
     });
 
     graphInstanceRef.current = graph;
+    graph.nodeRelSize(1);
+
+    // Custom Click Handling to bypass D3-zoom/pointerup conflict
+    let clickStartX = 0;
+    let clickStartY = 0;
+    let clickStartTime = 0;
+
+    const handlePointerDown = (e) => {
+      clickStartX = e.clientX;
+      clickStartY = e.clientY;
+      clickStartTime = Date.now();
+    };
+
+    const handlePointerUp = (e) => {
+      const duration = Date.now() - clickStartTime;
+      const dx = e.clientX - clickStartX;
+      const dy = e.clientY - clickStartY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < 8 && duration < 500) {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const { x: graphX, y: graphY } = graph.screen2GraphCoords(x, y);
+
+        const { nodes } = graph.graphData();
+        let closestNode = null;
+        let minDistance = Infinity;
+
+        for (const node of nodes) {
+          if (node.x === undefined || node.y === undefined) continue;
+          const ndx = node.x - graphX;
+          const ndy = node.y - graphY;
+          const ndist = Math.sqrt(ndx * ndx + ndy * ndy);
+          const hitRadius = Math.max(node.val + 2, 10);
+          if (ndist <= hitRadius && ndist < minDistance) {
+            minDistance = ndist;
+            closestNode = node;
+          }
+        }
+
+        if (closestNode) {
+          audio.playClick();
+          if (onSelectNodeRef.current) {
+            onSelectNodeRef.current(closestNode);
+          }
+        }
+      }
+    };
+
+    const container = containerRef.current;
+    container.addEventListener('pointerdown', handlePointerDown);
+    container.addEventListener('pointerup', handlePointerUp);
 
     // Implement ResizeObserver to set graph bounds dynamically
     const resizeObserver = new ResizeObserver((entries) => {
@@ -142,9 +190,11 @@ export default function GraphWindow({
         graph.width(width).height(height);
       }
     });
-    resizeObserver.observe(containerRef.current);
+    resizeObserver.observe(container);
 
     return () => {
+      container.removeEventListener('pointerdown', handlePointerDown);
+      container.removeEventListener('pointerup', handlePointerUp);
       resizeObserver.disconnect();
       if (graphInstanceRef.current) {
         graphInstanceRef.current.onEngineStop(() => {});
