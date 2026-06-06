@@ -3,10 +3,22 @@ import ForceGraph from 'force-graph';
 import { forceCollide } from 'd3-force-3d';
 import { audio } from '../utils/audio';
 
-export default function GraphWindow({ graphData, onSelectNode, selectedNodeId, searchQuery }) {
+export default function GraphWindow({ 
+  graphData, 
+  onSelectNode, 
+  selectedNodeId, 
+  searchQuery,
+  selectedLanguages = [],
+  setSelectedLanguages,
+  minStars = 0,
+  setMinStars,
+  allLanguages = [],
+  maxStarsLimit = 100
+}) {
   const containerRef = useRef(null);
   const graphInstanceRef = useRef(null);
   const [showSemantic, setShowSemantic] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const hasZoomedRef = useRef(false);
 
   // Store dynamic props in refs for canvas rendering and event handlers
@@ -221,6 +233,87 @@ export default function GraphWindow({ graphData, onSelectNode, selectedNodeId, s
           <div className="legend-dot" style={{ backgroundColor: '#00ffff' }} />
           <span>Semantic Relation</span>
         </div>
+      </div>
+
+      {/* Retro Filter Settings Box */}
+      <div className="win95-window" style={{ position: 'absolute', top: '10px', right: '10px', width: '200px', zIndex: 11, fontSize: '11px' }}>
+        <div 
+          className="win95-title-bar active" 
+          style={{ cursor: 'pointer', userSelect: 'none' }} 
+          onClick={() => {
+            audio.playClick();
+            setIsFiltersOpen(!isFiltersOpen);
+          }}
+        >
+          <span className="win95-title-text">🎛️ Filter Settings</span>
+          <div className="win95-title-controls">
+            <button className="win95-btn" style={{ width: '16px', height: '14px', padding: 0, fontSize: '9px', lineHeight: '10px' }}>
+              {isFiltersOpen ? '▲' : '▼'}
+            </button>
+          </div>
+        </div>
+        {isFiltersOpen && (
+          <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Languages filter */}
+            <div className="win95-raised" style={{ padding: '4px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Languages:</div>
+              <div className="win95-recessed" style={{ maxHeight: '100px', overflowY: 'auto', padding: '4px', backgroundColor: '#fff', color: '#000' }}>
+                {allLanguages.map(lang => (
+                  <label key={lang} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', marginBottom: '2px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedLanguages.includes(lang)}
+                      onChange={() => {
+                        audio.playClick();
+                        if (selectedLanguages.includes(lang)) {
+                          setSelectedLanguages(selectedLanguages.filter(l => l !== lang));
+                        } else {
+                          setSelectedLanguages([...selectedLanguages, lang]);
+                        }
+                      }}
+                    />
+                    {lang}
+                  </label>
+                ))}
+                {allLanguages.length === 0 && <span style={{ color: '#888' }}>No languages</span>}
+              </div>
+              {selectedLanguages.length > 0 && (
+                <button 
+                  className="win95-btn" 
+                  style={{ width: '100%', marginTop: '4px', padding: '2px 0' }}
+                  onClick={() => {
+                    audio.playClick();
+                    setSelectedLanguages([]);
+                  }}
+                >
+                  Clear Selected
+                </button>
+              )}
+            </div>
+
+            {/* Min Stars slider */}
+            <div className="win95-raised" style={{ padding: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '4px' }}>
+                <span>Min Stars:</span>
+                <span style={{ color: '#0000ff' }}>{minStars}</span>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max={maxStarsLimit}
+                value={minStars}
+                style={{ width: '100%', cursor: 'pointer' }}
+                onChange={(e) => {
+                  setMinStars(Number(e.target.value));
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#666' }}>
+                <span>0</span>
+                <span>{maxStarsLimit}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

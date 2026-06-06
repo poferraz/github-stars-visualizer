@@ -52,18 +52,28 @@ export default function App() {
       return {};
     }
   });
-  const [graphData, setGraphData] = useState(() => {
-    try {
-      const storedRepos = localStorage.getItem('gitstars_cached_repos');
-      const storedAi = localStorage.getItem('gitstars_cached_ai');
-      if (storedRepos && storedAi) {
-        return buildGraphData(JSON.parse(storedRepos), JSON.parse(storedAi));
-      }
-    } catch (e) {
-      console.error('Failed to parse localStorage cache during initialization:', e);
-    }
-    return { nodes: [], links: [] };
-  });
+  const [selectedLanguages, setSelectedLanguages] = useState([]);
+  const [minStars, setMinStars] = useState(0);
+
+  const currentGraphData = React.useMemo(() => {
+    return buildGraphData(repositories, aiAnalysis, {
+      languages: selectedLanguages,
+      minStars
+    });
+  }, [repositories, aiAnalysis, selectedLanguages, minStars]);
+
+  const allLanguages = React.useMemo(() => {
+    const langs = new Set();
+    repositories.forEach(repo => {
+      if (repo.language) langs.add(repo.language);
+    });
+    return Array.from(langs).sort();
+  }, [repositories]);
+
+  const maxStarsLimit = React.useMemo(() => {
+    if (repositories.length === 0) return 100;
+    return Math.max(...repositories.map(r => r.stargazers_count || 0), 100);
+  }, [repositories]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -182,7 +192,8 @@ export default function App() {
       localStorage.removeItem('gitstars_cached_ai');
       setRepositories([]);
       setAiAnalysis({});
-      setGraphData({ nodes: [], links: [] });
+      setSelectedLanguages([]);
+      setMinStars(0);
     }
 
     setWindows(prev => ({
@@ -204,7 +215,8 @@ export default function App() {
     });
     setRepositories([]);
     setAiAnalysis({});
-    setGraphData({ nodes: [], links: [] });
+    setSelectedLanguages([]);
+    setMinStars(0);
     setSelectedNode(null);
     audio.playError();
     
@@ -224,6 +236,8 @@ export default function App() {
       return;
     }
 
+    setSelectedLanguages([]);
+    setMinStars(0);
     setIsIndexing(true);
     setIndexingLogs([]);
     setInstallProgress(5);
@@ -280,8 +294,6 @@ export default function App() {
         setRepositories(fetchedRepos);
         setAiAnalysis(analysis);
         
-        const gData = buildGraphData(fetchedRepos, analysis);
-        setGraphData(gData);
         addLog('✓ GRAPH DATA GENERATED SUCCESSFULLY.', 'success');
       } else {
         // Fallback if no AI key configured
@@ -291,8 +303,6 @@ export default function App() {
         
         setRepositories(fetchedRepos);
         setAiAnalysis({});
-        const gData = buildGraphData(fetchedRepos, {});
-        setGraphData(gData);
         addLog('✓ DEFAULT GRAPH DATA GENERATED.', 'success');
       }
 
@@ -589,10 +599,16 @@ export default function App() {
                 
                 <div className="layout-flex win95-recessed" style={{ overflow: 'hidden' }}>
                   <GraphWindow 
-                    graphData={graphData} 
+                    graphData={currentGraphData} 
                     onSelectNode={handleSelectNode} 
                     selectedNodeId={selectedNode?.id}
                     searchQuery={searchQuery}
+                    selectedLanguages={selectedLanguages}
+                    setSelectedLanguages={setSelectedLanguages}
+                    minStars={minStars}
+                    setMinStars={setMinStars}
+                    allLanguages={allLanguages}
+                    maxStarsLimit={maxStarsLimit}
                   />
                 </div>
               </div>
@@ -615,8 +631,8 @@ export default function App() {
             >
               <DetailWindow 
                 node={selectedNode} 
-                allNodes={graphData.nodes}
-                allLinks={graphData.links}
+                allNodes={currentGraphData.nodes}
+                allLinks={currentGraphData.links}
                 onSelectNode={handleSelectNode}
                 onClose={() => toggleWindow('detail')}
               />
