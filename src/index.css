@@ -1,0 +1,560 @@
+/* ==========================================
+   Retro OS 90s-2000s Design System (Win95/Classic OS)
+   ========================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=VT323&display=swap');
+
+:root {
+  --os-bg: #008080; /* Classic Teal */
+  --os-face: #c0c0c0; /* Standard Grey */
+  --os-light: #ffffff; /* White highlights */
+  --os-shadow: #808080; /* Grey shadow */
+  --os-dark-shadow: #0a0a0a; /* Darkest shadow */
+  
+  --os-title-active: linear-gradient(90deg, #000080, #1084d0); /* Classic Blue gradient */
+  --os-title-inactive: linear-gradient(90deg, #808080, #b0b0b0); /* Inactive Grey */
+  
+  --font-os: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "Courier Prime", "Lucida Console", "Courier New", Courier, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  image-rendering: pixelated;
+  user-select: none;
+}
+
+body {
+  font-family: var(--font-os);
+  background-color: var(--os-bg);
+  color: #000000;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  font-size: 14px;
+}
+
+/* ==========================================
+   CRT Screen Effects (Retro Shader Overlay)
+   ========================================== */
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 999999;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+.crt-vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+  z-index: 999998;
+  pointer-events: none;
+}
+
+.crt-flicker {
+  animation: crtFlicker 0.15s infinite;
+}
+
+@keyframes crtFlicker {
+  0% { opacity: 0.99; }
+  50% { opacity: 1; }
+  100% { opacity: 0.99; }
+}
+
+/* ==========================================
+   Desktop Grid & Taskbar
+   ========================================== */
+.desktop {
+  width: 100vw;
+  height: calc(100vh - 40px);
+  position: relative;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 20px;
+}
+
+.taskbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 40px;
+  background-color: var(--os-face);
+  border-top: 2px solid var(--os-light);
+  box-shadow: inset 0 -1px 0 var(--os-shadow), 0 -2px 0 var(--os-face);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px;
+  z-index: 9999;
+}
+
+/* ==========================================
+   Windows 95 Borders & Panels
+   ========================================== */
+/* Outward 3D Bevel (Raised) */
+.win95-raised {
+  border: 2px solid;
+  border-color: var(--os-light) var(--os-shadow) var(--os-shadow) var(--os-light);
+  box-shadow: inset -1px -1px 0 var(--os-dark-shadow), inset 1px 1px 0 var(--os-light);
+}
+
+/* Inward 3D Bevel (Recessed/Input Field) */
+.win95-recessed {
+  border: 2px solid;
+  border-color: var(--os-shadow) var(--os-light) var(--os-light) var(--os-shadow);
+  box-shadow: inset -1px -1px 0 var(--os-light), inset 1px 1px 0 var(--os-dark-shadow);
+  background-color: #ffffff;
+}
+
+/* Window Wrapper */
+.win95-window {
+  background-color: var(--os-face);
+  padding: 3px;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 280px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Window Header */
+.win95-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+  padding: 2px 4px;
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  cursor: grab;
+}
+
+.win95-title-bar.active {
+  background: var(--os-title-active);
+}
+
+.win95-title-bar.inactive {
+  background: var(--os-title-inactive);
+}
+
+.win95-title-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.win95-title-controls {
+  display: flex;
+  gap: 2px;
+}
+
+/* Standard Bevel Button */
+.win95-btn {
+  background-color: var(--os-face);
+  border: 2px solid;
+  border-color: var(--os-light) var(--os-shadow) var(--os-shadow) var(--os-light);
+  box-shadow: inset -1px -1px 0 var(--os-dark-shadow), inset 1px 1px 0 var(--os-light);
+  padding: 2px 6px;
+  font-family: var(--font-os);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  outline: none;
+}
+
+.win95-btn:active {
+  border-color: var(--os-shadow) var(--os-light) var(--os-light) var(--os-shadow);
+  box-shadow: inset -1px -1px 0 var(--os-light), inset 1px 1px 0 var(--os-dark-shadow);
+  padding: 3px 5px 1px 7px;
+}
+
+.win95-btn:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.win95-btn-close {
+  width: 16px;
+  height: 14px;
+  font-weight: bold;
+  font-size: 10px;
+  line-height: 10px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.win95-btn-close:active {
+  padding: 1px 0 0 1px;
+}
+
+/* ==========================================
+   Form Inputs & Typography
+   ========================================== */
+input[type="text"], input[type="password"], select, textarea {
+  font-family: var(--font-os);
+  font-size: 13px;
+  padding: 4px 6px;
+  outline: none;
+  border: 2px solid;
+  border-color: var(--os-shadow) var(--os-light) var(--os-light) var(--os-shadow);
+  box-shadow: inset -1px -1px 0 var(--os-light), inset 1px 1px 0 var(--os-dark-shadow);
+  background-color: #ffffff;
+}
+
+input:focus, select:focus, textarea:focus {
+  background-color: #fffffa;
+}
+
+label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.field-group {
+  margin-bottom: 12px;
+}
+
+/* ==========================================
+   Desktop Icons
+   ========================================== */
+.desktop-icon {
+  width: 70px;
+  height: 75px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 11px;
+  text-shadow: 1px 1px 1px #000;
+  padding: 5px;
+  border: 1px transparent solid;
+}
+
+.desktop-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px dotted rgba(255, 255, 255, 0.4);
+}
+
+.desktop-icon.selected {
+  background-color: rgba(0, 0, 128, 0.5);
+  border: 1px dotted #ffffff;
+}
+
+.desktop-icon-img {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(1px 1.5px 0px rgba(0, 0, 0, 0.6));
+}
+
+.desktop-icon-text {
+  word-break: break-word;
+  line-height: 12px;
+  max-height: 24px;
+  overflow: hidden;
+}
+
+/* ==========================================
+   Retro scrollbars
+   ========================================== */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+  background-color: var(--os-face);
+  border: 1px solid var(--os-shadow);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--os-face);
+  border: 2px solid;
+  border-color: var(--os-light) var(--os-shadow) var(--os-shadow) var(--os-light);
+  box-shadow: inset -1px -1px 0 var(--os-dark-shadow), inset 1px 1px 0 var(--os-light);
+}
+
+::-webkit-scrollbar-thumb:active {
+  border-color: var(--os-shadow) var(--os-light) var(--os-light) var(--os-shadow);
+}
+
+/* ==========================================
+   Start Menu & Clock
+   ========================================== */
+.start-button {
+  font-weight: bold;
+  height: 28px;
+  padding: 2px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.start-menu {
+  position: absolute;
+  bottom: 40px;
+  left: 2px;
+  width: 220px;
+  background-color: var(--os-face);
+  z-index: 10000;
+  display: flex;
+  border: 2px solid;
+  border-color: var(--os-light) var(--os-shadow) var(--os-shadow) var(--os-light);
+  box-shadow: 2px 2px 12px rgba(0,0,0,0.4);
+}
+
+.start-menu-sidebar {
+  width: 28px;
+  background: linear-gradient(180deg, #000080, #1084d0);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 0;
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.start-menu-sidebar span {
+  font-family: var(--font-os);
+  text-shadow: 1px 1px #000;
+}
+
+.start-menu-items {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.start-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #000000;
+  text-decoration: none;
+}
+
+.start-menu-item:hover {
+  background-color: #000080;
+  color: #ffffff;
+}
+
+.start-menu-divider {
+  height: 2px;
+  background-color: var(--os-shadow);
+  border-bottom: 1px solid var(--os-light);
+  margin: 4px 2px;
+}
+
+.taskbar-clock {
+  font-size: 12px;
+  padding: 4px 8px;
+  background-color: var(--os-face);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.taskbar-tabs {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  padding: 0 10px;
+  overflow: hidden;
+}
+
+.taskbar-tab {
+  max-width: 140px;
+  flex: 1;
+  height: 28px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.taskbar-tab.active {
+  font-weight: bold;
+  background-color: #e0e0e0;
+  border-color: var(--os-shadow) var(--os-light) var(--os-light) var(--os-shadow);
+  box-shadow: inset -1px -1px 0 var(--os-light), inset 1px 1px 0 var(--os-dark-shadow);
+}
+
+/* ==========================================
+   Terminal / Retro Recessed Styles
+   ========================================== */
+.terminal-view {
+  background-color: #000000;
+  color: #00ff00;
+  font-family: var(--font-mono);
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 12px;
+}
+
+.terminal-line {
+  line-height: 18px;
+}
+
+.terminal-success {
+  color: #00ff00;
+}
+
+.terminal-info {
+  color: #00ffff;
+}
+
+.terminal-warning {
+  color: #ffff00;
+}
+
+.terminal-error {
+  color: #ff0000;
+}
+
+/* ==========================================
+   Graph Window Container
+   ========================================== */
+.graph-container {
+  width: 100%;
+  height: 100%;
+  background-color: #0d0d0d;
+  position: relative;
+}
+
+.graph-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+.graph-legend {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid #333;
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ==========================================
+   Specific Layout utilities
+   ========================================== */
+.layout-row {
+  display: flex;
+  gap: 12px;
+}
+
+.layout-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.layout-flex {
+  flex: 1;
+}
+
+.align-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.scrollable {
+  overflow-y: auto;
+}
+
+/* ==========================================
+   Shutdown Screen
+   ========================================== */
+.shutdown-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000000;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #e6e6e6;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.shutdown-msg {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: #ffff00;
+  text-shadow: 0 0 10px rgba(255,255,0,0.5);
+}
+
+.shutdown-desc {
+  font-size: 12px;
+  color: #888;
+}

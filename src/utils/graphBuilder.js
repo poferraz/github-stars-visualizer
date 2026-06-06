@@ -1,0 +1,106 @@
+export function buildGraphData(repositories = [], aiAnalysis = {}) {
+  const nodes = [];
+  const links = [];
+  const categories = new Set();
+
+  // 1. Gather all unique categories
+  repositories.forEach((repo) => {
+    const analysis = aiAnalysis[repo.full_name];
+    const category = (analysis && analysis.category) ? analysis.category.trim() : 'Uncategorized';
+    categories.add(category);
+  });
+
+  // 2. Add category nodes
+  categories.forEach((cat) => {
+    nodes.push({
+      id: cat,
+      name: cat,
+      type: 'category',
+      val: 16, // Category nodes are larger and visually distinct
+      color: '#ff00ff' // Neon magenta for categories
+    });
+  });
+
+  // 3. Keep track of available repo IDs for validation of semantic links
+  const availableRepoIds = new Set(repositories.map(r => r.full_name));
+
+  // 4. Add repo nodes and category connections
+  repositories.forEach((repo) => {
+    const analysis = aiAnalysis[repo.full_name];
+    const category = (analysis && analysis.category) ? analysis.category.trim() : 'Uncategorized';
+    const summary = (analysis && analysis.summary) ? analysis.summary : (repo.description || 'No description provided.');
+
+    // Calculate node size relative to star count (log scale)
+    const starCount = repo.stargazers_count || 0;
+    const nodeVal = Math.max(5, Math.log10(starCount + 1) * 3);
+
+    // Repo node
+    nodes.push({
+      id: repo.full_name,
+      name: repo.name,
+      fullName: repo.full_name,
+      description: repo.description,
+      summary: summary, // AI summary or fallback
+      language: repo.language || 'Unknown',
+      stars: starCount,
+      forks: repo.forks_count || 0,
+      url: repo.html_url,
+      type: 'repo',
+      val: nodeVal,
+      color: getLanguageColor(repo.language)
+    });
+
+    // Link repo to its category
+    links.push({
+      source: repo.full_name,
+      target: category,
+      type: 'belongs_to'
+    });
+
+    // 5. Add semantic connections if they connect to other starred repos
+    if (analysis && Array.isArray(analysis.related)) {
+      analysis.related.forEach((relatedId) => {
+        if (availableRepoIds.has(relatedId)) {
+          // Avoid duplicate link in opposite direction to keep graph clean
+          const linkExists = links.some(
+            l => (l.source === relatedId && l.target === repo.full_name) ||
+                 (l.source === repo.full_name && l.target === relatedId)
+          );
+          
+          if (!linkExists) {
+            links.push({
+              source: repo.full_name,
+              target: relatedId,
+              type: 'semantic_connection'
+            });
+          }
+        }
+      });
+    }
+  });
+
+  return { nodes, links };
+}
+
+// Retro-palette coding colors based on language
+function getLanguageColor(language) {
+  if (!language) return '#808080'; // Dark Grey
+  
+  const colors = {
+    javascript: '#f1e05a', // retro yellow
+    typescript: '#3178c6', // bright blue
+    python: '#3572a5', // green-blue
+    go: '#00add8', // teal
+    rust: '#dea584', // orange-copper
+    html: '#e34c26', // red
+    css: '#563d7c', // purple
+    java: '#b07219', // brown
+    c: '#555555', // grey
+    'c++': '#f34b7d', // pink-red
+    ruby: '#701516', // dark red
+    php: '#4f5d95' // lavender-blue
+  };
+
+  const key = language.toLowerCase();
+  return colors[key] || '#00ff00'; // Retro Terminal Green default
+}
