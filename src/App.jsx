@@ -547,6 +547,7 @@ export default function App() {
               width={windows.graph.width}
               height={windows.graph.height}
               icon={windows.graph.icon}
+              defaultMaximized={true}
               onClose={() => toggleWindow('graph')}
               onFocus={() => focusWindow('graph')}
             >
