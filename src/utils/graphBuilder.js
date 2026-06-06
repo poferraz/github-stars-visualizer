@@ -21,14 +21,20 @@ export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {})
   const links = [];
   const categories = new Set();
 
-  // 1. Gather all unique categories
+  // 1. Map aiAnalysis keys case-insensitively for lookups
+  const aiAnalysisLowerMap = new Map();
+  Object.entries(aiAnalysis || {}).forEach(([key, val]) => {
+    aiAnalysisLowerMap.set(key.toLowerCase(), val);
+  });
+
+  // 2. Gather all unique categories
   filteredRepositories.forEach((repo) => {
-    const analysis = aiAnalysis[repo.full_name];
+    const analysis = aiAnalysisLowerMap.get(repo.full_name.toLowerCase());
     const category = (analysis && analysis.category) ? analysis.category.trim() : 'Uncategorized';
     categories.add(category);
   });
 
-  // 2. Add category nodes
+  // 3. Add category nodes
   categories.forEach((cat) => {
     nodes.push({
       id: cat,
@@ -39,12 +45,12 @@ export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {})
     });
   });
 
-  // 3. Keep track of available repo IDs for validation of semantic links
-  const availableRepoIds = new Set(filteredRepositories.map(r => r.full_name));
+  // 4. Map lowercased full_name to original full_name for case-insensitive validation/resolution of semantic links
+  const filteredRepoMap = new Map(filteredRepositories.map(r => [r.full_name.toLowerCase(), r.full_name]));
 
-  // 4. Add repo nodes and category connections
+  // 5. Add repo nodes and category connections
   filteredRepositories.forEach((repo) => {
-    const analysis = aiAnalysis[repo.full_name];
+    const analysis = aiAnalysisLowerMap.get(repo.full_name.toLowerCase());
     const category = (analysis && analysis.category) ? analysis.category.trim() : 'Uncategorized';
     const summary = (analysis && analysis.summary) ? analysis.summary : (repo.description || 'No description provided.');
 
@@ -75,20 +81,21 @@ export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {})
       type: 'belongs_to'
     });
 
-    // 5. Add semantic connections if they connect to other starred repos
+    // 6. Add semantic connections if they connect to other starred repos
     if (analysis && Array.isArray(analysis.related)) {
       analysis.related.forEach((relatedId) => {
-        if (availableRepoIds.has(relatedId)) {
+        const resolvedRelatedId = filteredRepoMap.get(relatedId.toLowerCase());
+        if (resolvedRelatedId) {
           // Avoid duplicate link in opposite direction to keep graph clean
           const linkExists = links.some(
-            l => (l.source === relatedId && l.target === repo.full_name) ||
-                 (l.source === repo.full_name && l.target === relatedId)
+            l => (l.source === resolvedRelatedId && l.target === repo.full_name) ||
+                 (l.source === repo.full_name && l.target === resolvedRelatedId)
           );
           
           if (!linkExists) {
             links.push({
               source: repo.full_name,
-              target: relatedId,
+              target: resolvedRelatedId,
               type: 'semantic_connection'
             });
           }

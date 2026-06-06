@@ -89,4 +89,58 @@ describe('Graph Data Builder Utility', () => {
     expect(graphData.nodes.filter(n => n.type === 'repo')).toHaveLength(0);
     expect(graphData.nodes.filter(n => n.type === 'category')).toHaveLength(0);
   });
+
+  it('should handle case-insensitive lookups and resolve semantic links with mismatched casing', () => {
+    const reposWithDifferentCasing = [
+      {
+        full_name: 'Owner/Repo-A',
+        name: 'Repo-A',
+        description: 'A cool web framework',
+        language: 'JavaScript',
+        stargazers_count: 100,
+        html_url: 'https://github.com/Owner/Repo-A'
+      },
+      {
+        full_name: 'owner/repo-b',
+        name: 'repo-b',
+        description: 'Validation library',
+        language: 'TypeScript',
+        stargazers_count: 50,
+        html_url: 'https://github.com/owner/repo-b'
+      }
+    ];
+
+    const aiAnalysisWithMismatchedCasing = {
+      // Key with lowercase casing, but original was Owner/Repo-A
+      'owner/repo-a': {
+        category: 'Web Frameworks',
+        summary: 'A fast JavaScript framework.',
+        related: ['Owner/Repo-B'] // Mismatched casing: Owner/Repo-B vs owner/repo-b
+      },
+      // Key with exact casing
+      'owner/repo-b': {
+        category: 'Utilities',
+        summary: 'A validation helper library.',
+        related: []
+      }
+    };
+
+    const graphData = buildGraphData(reposWithDifferentCasing, aiAnalysisWithMismatchedCasing);
+
+    // Verify nodes: Category nodes should be resolved correctly
+    const categoryNodes = graphData.nodes.filter(n => n.type === 'category');
+    const categoryIds = categoryNodes.map(c => c.id);
+    expect(categoryIds).toContain('Web Frameworks');
+    expect(categoryIds).toContain('Utilities');
+
+    // Verify links: Semantic link should be resolved case-insensitively,
+    // and both source and target in the link must use their exact original casing.
+    const semanticLinks = graphData.links.filter(l => l.type === 'semantic_connection');
+    expect(semanticLinks).toHaveLength(1);
+    expect(semanticLinks[0]).toEqual({
+      source: 'Owner/Repo-A',
+      target: 'owner/repo-b',
+      type: 'semantic_connection'
+    });
+  });
 });

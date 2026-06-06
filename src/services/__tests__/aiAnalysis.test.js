@@ -180,4 +180,72 @@ describe('AI Stars Analysis Coordinator', () => {
     // Ensure nonexistent relation got filtered out to prevent crash
     expect(result['owner/repo2'].related).toEqual([]);
   });
+
+  it('should handle case-insensitive lookups and normalize related repos casing in aiAnalysis', async () => {
+    const mockResponse = JSON.stringify({
+      // Key is lowercased compared to the original casing 'Owner/Repo1'
+      'owner/repo1': {
+        category: 'Frontend Tools',
+        summary: 'A library.',
+        related: ['owner/repo2'] // Casing is lowercased compared to the original 'Owner/Repo2'
+      },
+      'owner/repo2': {
+        category: 'Backend Tools',
+        summary: 'A framework.',
+        related: []
+      }
+    });
+
+    aiRouter.sendMessage.mockResolvedValueOnce(mockResponse);
+
+    const result = await analyzeStars({
+      repositories: [
+        { full_name: 'Owner/Repo1', description: 'desc', language: 'JS' },
+        { full_name: 'Owner/Repo2', description: 'desc2', language: 'TS' }
+      ],
+      provider: 'gemini',
+      apiKey: 'key',
+      model: 'model'
+    });
+
+    expect(result).toHaveProperty('Owner/Repo1');
+    expect(result['Owner/Repo1'].category).toBe('Frontend Tools');
+    // Casing of the related repo should be normalized to the original 'Owner/Repo2'
+    expect(result['Owner/Repo1'].related).toEqual(['Owner/Repo2']);
+  });
+
+  it('should recover and normalize casing using heuristic parsing when JSON is malformed and has mismatched casing', async () => {
+    const malformedResponse = `
+    {
+      "owner/repo1": {
+        "category": "Frontend Frameworks",
+        "summary": "This is a multiline summary.
+        It has unescaped newlines.",
+        "related": ["owner/repo2"]
+      },
+      "owner/repo2": {
+        "category": "Backend Tools",
+        "summary": "Some backend tool.",
+        "related": []
+      }
+    }
+    `;
+
+    aiRouter.sendMessage.mockResolvedValueOnce(malformedResponse);
+
+    const result = await analyzeStars({
+      repositories: [
+        { full_name: 'Owner/Repo1', description: 'desc1', language: 'JS' },
+        { full_name: 'Owner/Repo2', description: 'desc2', language: 'TS' }
+      ],
+      provider: 'gemini',
+      apiKey: 'key',
+      model: 'model'
+    });
+
+    expect(result).toHaveProperty('Owner/Repo1');
+    expect(result['Owner/Repo1'].category).toBe('Frontend Frameworks');
+    // Casing should be normalized using heuristicParse
+    expect(result['Owner/Repo1'].related).toEqual(['Owner/Repo2']);
+  });
 });

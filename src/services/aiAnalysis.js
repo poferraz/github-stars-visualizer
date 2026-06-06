@@ -1,9 +1,11 @@
 import { aiRouter } from './aiRouter';
 
 function heuristicParse(text, repoNames) {
+  const repoNamesLowerMap = new Map(repoNames.map(name => [name.toLowerCase(), name]));
   const result = {};
+  const lowerText = text.toLowerCase();
   for (const repoName of repoNames) {
-    const repoIndex = text.indexOf(repoName);
+    const repoIndex = lowerText.indexOf(repoName.toLowerCase());
     if (repoIndex === -1) continue;
 
     // Grab a chunk of text starting from this repository name (up to 1000 characters)
@@ -23,7 +25,10 @@ function heuristicParse(text, repoNames) {
     if (relatedMatch) {
       const relatedContent = relatedMatch[1];
       const matches = [...relatedContent.matchAll(/['"]([^'"]+)['"]/g)];
-      related = matches.map(m => m[1].trim()).filter(name => repoNames.includes(name));
+      related = matches
+        .map(m => m[1].trim())
+        .map(name => repoNamesLowerMap.get(name.toLowerCase()))
+        .filter(name => name !== undefined);
     }
 
     result[repoName] = { category, summary, related };
@@ -136,8 +141,17 @@ Make sure all repository names used as keys and in the related array match the i
 
   // Normalization and Validation stage (ensures output format is always correct)
   const normalized = {};
+  const repoNamesLowerMap = new Map(repoNames.map(name => [name.toLowerCase(), name]));
+
   repositories.forEach(repo => {
-    const originalEntry = parsed[repo.full_name];
+    let originalEntry = parsed[repo.full_name];
+    if (!originalEntry) {
+      const matchingKey = Object.keys(parsed).find(k => k.toLowerCase() === repo.full_name.toLowerCase());
+      if (matchingKey) {
+        originalEntry = parsed[matchingKey];
+      }
+    }
+
     if (originalEntry && typeof originalEntry === 'object') {
       const category = (typeof originalEntry.category === 'string' && originalEntry.category.trim())
         ? originalEntry.category.trim()
@@ -151,7 +165,8 @@ Make sure all repository names used as keys and in the related array match the i
       if (Array.isArray(originalEntry.related)) {
         related = originalEntry.related
           .map(r => typeof r === 'string' ? r.trim() : '')
-          .filter(name => repoNames.includes(name) && name !== repo.full_name);
+          .map(name => repoNamesLowerMap.get(name.toLowerCase()))
+          .filter(name => name !== undefined && name !== repo.full_name);
       }
 
       normalized[repo.full_name] = { category, summary, related };
