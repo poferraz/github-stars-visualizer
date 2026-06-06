@@ -162,6 +162,12 @@ This project was built possible by these fantastic open-source libraries, assets
 
 *   **Frontend & Tooling:** [React 19](https://react.dev/), [Vite 8](https://vite.dev/), [ESLint](https://eslint.org/)
 *   **Data Visualization:** [force-graph (HTML5 Canvas)](https://github.com/vasturiano/force-graph) by Vasco Asturiano
+*   **Visualization & Physics Inspirations:**
+    *   [The R Graph Gallery - Network Analysis](https://r-graph-gallery.com/network.html)
+    *   [Flourish Studio - Network Charts](https://flourish.studio/visualisations/network-charts/)
+    *   [Gephi - Open Graph Viz Platform](https://gephi.org/)
+    *   [RawGraphs](https://www.rawgraphs.io/)
+    *   [DAGitty - Directed Acyclic Graphs](https://dagitty.net/)
 *   **AI Integration:** [@google/generative-ai SDK](https://github.com/google/generative-ai-js)
 *   **Icons:** [Lucide React](https://lucide.dev/)
 *   **Testing Suite:** [Vitest 4](https://vitest.dev/)
