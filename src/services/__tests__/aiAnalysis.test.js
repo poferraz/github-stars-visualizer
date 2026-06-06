@@ -91,6 +91,42 @@ describe('AI Stars Analysis Coordinator', () => {
     expect(result['owner/repo'].category).toBe('Web Dev');
   });
 
+  it('should call onProgress callback with correct stages', async () => {
+    const mockResponse = JSON.stringify({
+      'owner/repo1': {
+        category: 'Frontend Tools',
+        summary: 'A library.',
+        related: ['owner/repo2']
+      },
+      'owner/repo2': {
+        category: 'Backend Tools',
+        summary: 'A framework.',
+        related: []
+      }
+    });
+
+    aiRouter.sendMessage.mockResolvedValueOnce(mockResponse);
+
+    const onProgress = vi.fn();
+
+    await analyzeStars({
+      repositories: [
+        { full_name: 'owner/repo1', description: 'desc', language: 'JS' },
+        { full_name: 'owner/repo2', description: 'desc2', language: 'TS' }
+      ],
+      provider: 'gemini',
+      apiKey: 'key',
+      model: 'model',
+      onProgress
+    });
+
+    expect(onProgress).toHaveBeenCalled();
+    const logs = onProgress.mock.calls.map(call => call[0]);
+    expect(logs.some(l => l.includes('Frontend Tools'))).toBe(true);
+    expect(logs.some(l => l.includes('Backend Tools'))).toBe(true);
+    expect(logs.some(l => l.includes('1 semantic connection'))).toBe(true);
+  });
+
   it('should throw an error if JSON is completely invalid', async () => {
     aiRouter.sendMessage.mockResolvedValueOnce('This is not JSON at all');
 
