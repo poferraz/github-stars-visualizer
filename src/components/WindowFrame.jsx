@@ -15,14 +15,17 @@ export default function WindowFrame({
   height = 'auto',
   minHeight = 'auto',
   children,
-  icon = '📁'
+  icon = '📁',
+  defaultMaximized = false
 }) {
   const [pos, setPos] = useState({ x: defaultX, y: defaultY });
+  const [isMaximized, setIsMaximized] = useState(defaultMaximized);
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const headerRef = useRef(null);
 
   const handleMouseDown = (e) => {
+    if (isMaximized) return;
     // Avoid dragging when clicking control buttons
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
       return;
@@ -52,6 +55,7 @@ export default function WindowFrame({
 
   // Add touch support for mobile drag-and-drop
   const handleTouchStart = (e) => {
+    if (isMaximized) return;
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
     const touch = e.touches[0];
     onFocus();
@@ -88,10 +92,17 @@ export default function WindowFrame({
 
   if (!isOpen) return null;
 
-  return (
-    <div
-      className="win95-window win95-raised"
-      style={{
+  const windowStyle = isMaximized
+    ? {
+        left: 0,
+        top: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: zIndex,
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    : {
         left: `${pos.x}px`,
         top: `${pos.y}px`,
         width: width,
@@ -100,7 +111,12 @@ export default function WindowFrame({
         zIndex: zIndex,
         display: 'flex',
         flexDirection: 'column'
-      }}
+      };
+
+  return (
+    <div
+      className="win95-window win95-raised"
+      style={windowStyle}
       onClick={onFocus}
     >
       <div
@@ -108,12 +124,27 @@ export default function WindowFrame({
         className={`win95-title-bar ${isActive ? 'active' : 'inactive'}`}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
+        onDoubleClick={() => {
+          audio.playClick();
+          setIsMaximized(!isMaximized);
+        }}
       >
         <div className="win95-title-text" style={{ fontStyle: 'normal' }}>
           <span>{icon}</span>
           <span style={{ fontFamily: 'var(--font-os)', fontSize: '11px', letterSpacing: '0px' }}>{title}</span>
         </div>
-        <div className="win95-title-controls">
+        <div className="win95-title-controls" style={{ display: 'flex', gap: '2px' }}>
+          <button
+            className="win95-btn"
+            style={{ width: '16px', height: '14px', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              audio.playClick();
+              setIsMaximized(!isMaximized);
+            }}
+          >
+            {isMaximized ? '❐' : '⬜'}
+          </button>
           <button
             className="win95-btn win95-btn-close"
             style={{ width: '16px', height: '14px', fontSize: '9px', fontWeight: 'bold' }}

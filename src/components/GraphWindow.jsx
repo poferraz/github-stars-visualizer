@@ -1,30 +1,86 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ForceGraph from 'force-graph';
+import { forceCollide } from 'd3-force-3d';
 import { audio } from '../utils/audio';
 
 export default function GraphWindow({ graphData, onSelectNode, selectedNodeId, searchQuery }) {
   const containerRef = useRef(null);
   const graphInstanceRef = useRef(null);
   const [showSemantic, setShowSemantic] = useState(true);
+  const hasZoomedRef = useRef(false);
 
+  // Store dynamic props in refs for canvas rendering and event handlers
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
+  const onSelectNodeRef = useRef(onSelectNode);
+  onSelectNodeRef.current = onSelectNode;
+
+  // Node drawing logic used by both initial mount and redraw triggers
+  const drawNode = (node, ctx, globalScale) => {
+    const isHighlighted = searchQueryRef.current && 
+      node.name.toLowerCase().includes(searchQueryRef.current.toLowerCase());
+    const isSelected = selectedNodeIdRef.current && node.id === selectedNodeIdRef.current;
+    
+    const label = node.name;
+    const baseFontSize = node.type === 'category' ? 12 : 9;
+    const fontSize = baseFontSize / globalScale;
+    
+    ctx.font = `${node.type === 'category' ? 'bold ' : ''}${fontSize}px var(--font-mono)`;
+
+    // 1. Draw glowing outer halo for selected or searched nodes
+    if (isSelected || isHighlighted) {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.val + (isSelected ? 5 : 3), 0, 2 * Math.PI, false);
+      ctx.strokeStyle = isSelected ? '#ff00ff' : '#00ffff';
+      ctx.lineWidth = 2 / globalScale;
+      ctx.stroke();
+    }
+
+    // 2. Draw core node circle
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
+    ctx.fillStyle = node.color;
+    ctx.fill();
+
+    // Thin stroke boundary for categories
+    if (node.type === 'category') {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5 / globalScale;
+      ctx.stroke();
+    }
+
+    // 3. Render Node labels (only if we aren't zoomed out extremely far)
+    if (globalScale > 0.15) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Draw text background box for categories to make them readable
+      if (node.type === 'category') {
+        const textWidth = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(13, 13, 13, 0.85)';
+        ctx.fillRect(
+          node.x - textWidth / 2 - 3,
+          node.y + node.val + 2,
+          textWidth + 6,
+          fontSize + 4
+        );
+      }
+
+      ctx.fillStyle = node.type === 'category' ? '#ff00ff' : (isSelected ? '#ff00ff' : '#00ff00');
+      ctx.fillText(label, node.x, node.y + node.val + fontSize + (node.type === 'category' ? 2 : 1));
+    }
+  };
+
+  // Initialize ForceGraph once on mount
   useEffect(() => {
-    if (!containerRef.current || !graphData || graphData.nodes.length === 0) return;
+    if (!containerRef.current) return;
 
-    // Clear previous instance
+    // Clear previous instance/DOM elements
     containerRef.current.innerHTML = '';
 
-    // Filter out semantic links if toggled off
-    const filteredLinks = showSemantic 
-      ? graphData.links 
-      : graphData.links.filter(l => l.type !== 'semantic_connection');
-
-    const filteredGraphData = {
-      nodes: graphData.nodes,
-      links: filteredLinks
-    };
-
     const graph = ForceGraph()(containerRef.current)
-      .graphData(filteredGraphData)
       .nodeId('id')
       .nodeVal('val')
       .nodeColor('color')
@@ -36,81 +92,79 @@ export default function GraphWindow({ graphData, onSelectNode, selectedNodeId, s
       .linkDirectionalParticleWidth(2)
       .onNodeClick(node => {
         audio.playClick();
-        onSelectNode(node);
+        if (onSelectNodeRef.current) {
+          onSelectNodeRef.current(node);
+        }
       })
       .backgroundColor('#0d0d0d');
 
+    // Add repulsion, distance, and collision forces
+    graph.d3Force('charge').strength(node => node.type === 'category' ? -400 : -120);
+    graph.d3Force('link').distance(link => link.type === 'semantic_connection' ? 150 : 80);
+    graph.d3Force('collide', forceCollide(node => node.val + 15));
+
     // Customize node rendering on Canvas to show labels and focus highlights
-    graph.nodeCanvasObject((node, ctx, globalScale) => {
-      const isHighlighted = searchQuery && 
-        node.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const isSelected = selectedNodeId && node.id === selectedNodeId;
-      
-      const label = node.name;
-      const baseFontSize = node.type === 'category' ? 12 : 9;
-      const fontSize = baseFontSize / globalScale;
-      
-      ctx.font = `${node.type === 'category' ? 'bold ' : ''}${fontSize}px var(--font-mono)`;
-
-      // 1. Draw glowing outer halo for selected or searched nodes
-      if (isSelected || isHighlighted) {
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.val + (isSelected ? 5 : 3), 0, 2 * Math.PI, false);
-        ctx.strokeStyle = isSelected ? '#ff00ff' : '#00ffff';
-        ctx.lineWidth = 2 / globalScale;
-        ctx.stroke();
-      }
-
-      // 2. Draw core node circle
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
-      ctx.fillStyle = node.color;
-      ctx.fill();
-
-      // Thin stroke boundary for categories
-      if (node.type === 'category') {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5 / globalScale;
-        ctx.stroke();
-      }
-
-      // 3. Render Node labels (only if we aren't zoomed out extremely far)
-      if (globalScale > 0.15) {
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Draw text background box for categories to make them readable
-        if (node.type === 'category') {
-          const textWidth = ctx.measureText(label).width;
-          ctx.fillStyle = 'rgba(13, 13, 13, 0.85)';
-          ctx.fillRect(
-            node.x - textWidth / 2 - 3,
-            node.y + node.val + 2,
-            textWidth + 6,
-            fontSize + 4
-          );
-        }
-
-        ctx.fillStyle = node.type === 'category' ? '#ff00ff' : (isSelected ? '#ff00ff' : '#00ff00');
-        ctx.fillText(label, node.x, node.y + node.val + fontSize + (node.type === 'category' ? 2 : 1));
-      }
-    });
+    graph.nodeCanvasObject(drawNode);
 
     graphInstanceRef.current = graph;
 
-    // Zoom to fit on initial load
-    setTimeout(() => {
-      if (graphInstanceRef.current) {
-        graphInstanceRef.current.zoomToFit(200, 50);
+    // Implement ResizeObserver to set graph bounds dynamically
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        graph.width(width).height(height);
       }
-    }, 100);
+    });
+    resizeObserver.observe(containerRef.current);
 
     return () => {
+      resizeObserver.disconnect();
       if (graphInstanceRef.current) {
         graphInstanceRef.current.onEngineStop(null);
       }
+      graphInstanceRef.current = null;
     };
-  }, [graphData, showSemantic, selectedNodeId, searchQuery]);
+  }, []);
+
+  // Update graph data when graphData or showSemantic toggles change
+  useEffect(() => {
+    if (!graphData || graphData.nodes.length === 0) {
+      hasZoomedRef.current = false;
+      return;
+    }
+    if (!graphInstanceRef.current) return;
+
+    // Filter out semantic links if toggled off
+    const filteredLinks = showSemantic 
+      ? graphData.links 
+      : graphData.links.filter(l => l.type !== 'semantic_connection');
+
+    const filteredGraphData = {
+      nodes: graphData.nodes,
+      links: filteredLinks
+    };
+
+    graphInstanceRef.current.graphData(filteredGraphData);
+
+    // Zoom to fit on initial load/first populate
+    if (!hasZoomedRef.current) {
+      hasZoomedRef.current = true;
+      setTimeout(() => {
+        if (graphInstanceRef.current) {
+          graphInstanceRef.current.zoomToFit(200, 50);
+        }
+      }, 100);
+    }
+  }, [graphData, showSemantic]);
+
+  // Refresh graph rendering on highlight/selection change (avoids full rebuilds)
+  useEffect(() => {
+    if (graphInstanceRef.current) {
+      // Re-register the nodeCanvasObject with a new wrapper function reference.
+      // This signals to force-graph that a redraw of the canvas is needed.
+      graphInstanceRef.current.nodeCanvasObject((node, ctx, globalScale) => drawNode(node, ctx, globalScale));
+    }
+  }, [searchQuery, selectedNodeId]);
 
   const handleZoomFit = () => {
     audio.playClick();
