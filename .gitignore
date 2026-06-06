@@ -26,3 +26,8 @@ dist-ssr
 # GitNord deployment repository
 gitnord/
 
+# Media and screenshots
+screenshots/
+readme-poster.png
+
+
