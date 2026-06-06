@@ -121,10 +121,14 @@ export default function GraphWindow({
     // Customize node rendering on Canvas to show labels and focus highlights
     graph.nodeCanvasObject(drawNode);
 
-    // Ensure click target area matches the visually drawn node size (with padding for ease of interaction)
-    graph.nodePointerAreaPaint((node, color, ctx) => {
+    // Ensure click target area matches the visually drawn node size
+    // We scale the click target inversely with zoom so nodes remain easily clickable even when zoomed out
+    graph.nodePointerAreaPaint((node, color, ctx, globalScale) => {
+      const minScreenRadius = 8; // minimum click target size in screen pixels
+      const radius = Math.max(node.val + 2, minScreenRadius / globalScale);
+      
       ctx.beginPath();
-      ctx.arc(node.x, node.y, node.val + 2, 0, 2 * Math.PI, false);
+      ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
       ctx.fillStyle = color;
       ctx.fill();
     });
