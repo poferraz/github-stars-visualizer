@@ -22,8 +22,6 @@ export default function WindowFrame({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const headerRef = useRef(null);
 
-  if (!isOpen) return null;
-
   const handleMouseDown = (e) => {
     // Avoid dragging when clicking control buttons
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
@@ -87,6 +85,8 @@ export default function WindowFrame({
       window.removeEventListener('touchend', handleMouseUp);
     };
   }, [dragging, dragStart]);
+
+  if (!isOpen) return null;
 
   return (
     <div
