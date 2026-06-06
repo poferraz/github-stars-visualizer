@@ -260,7 +260,13 @@ export default function App() {
           provider: settings.provider,
           apiKey: settings.apiKey,
           model: settings.model,
-          customUrl: settings.customUrl
+          customUrl: settings.customUrl,
+          onProgress: (text, type = 'info', progress = null) => {
+            addLog(text, type);
+            if (progress !== null) {
+              setInstallProgress(progress);
+            }
+          }
         });
 
         addLog('✓ SEMANTIC CONNECTIONS FORGED BY AI ARCHIVIST.', 'success');

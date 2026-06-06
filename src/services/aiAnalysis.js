@@ -1,8 +1,12 @@
 import { aiRouter } from './aiRouter';
 
-export async function analyzeStars({ repositories = [], provider, apiKey, model, customUrl }) {
+export async function analyzeStars({ repositories = [], provider, apiKey, model, customUrl, onProgress }) {
   if (repositories.length === 0) {
     return {};
+  }
+
+  if (onProgress) {
+    onProgress('Formatting repository lists for AI input...', 'info', 45);
   }
 
   // Format repository list for the prompt to keep token size tiny
@@ -32,6 +36,10 @@ Return the result STRICTLY as a valid JSON object matching this structure (no ma
 }
 Make sure all repository names used as keys and in the related array match the input names exactly.`;
 
+  if (onProgress) {
+    onProgress('Sending request to AI provider...', 'info', 50);
+  }
+
   const rawResponse = await aiRouter.sendMessage({
     provider,
     apiKey,
@@ -39,6 +47,10 @@ Make sure all repository names used as keys and in the related array match the i
     prompt,
     customUrl
   });
+
+  if (onProgress) {
+    onProgress(`Received AI response (${rawResponse.length} chars). Cleaning and parsing...`, 'info', 75);
+  }
 
   // Extract JSON string if the model wrapped it in markdown codeblocks
   let cleanJson = rawResponse.trim();
@@ -60,7 +72,19 @@ Make sure all repository names used as keys and in the related array match the i
   cleanJson = cleanJson.replace(/,\s*([\]}])/g, '$1');
 
   try {
-    return JSON.parse(cleanJson);
+    const parsed = JSON.parse(cleanJson);
+    if (onProgress) {
+      onProgress('✓ Successfully parsed AI response.', 'success', 80);
+      const categories = new Set();
+      let connectionsCount = 0;
+      Object.values(parsed).forEach(item => {
+        if (item.category) categories.add(item.category);
+        if (Array.isArray(item.related)) connectionsCount += item.related.length;
+      });
+      onProgress(`🤖 AI identified ${categories.size} categories: ${Array.from(categories).join(', ')}`, 'success', 82);
+      onProgress(`🔗 AI established ${connectionsCount} semantic connections between repositories.`, 'success', 84);
+    }
+    return parsed;
   } catch (err) {
     console.error('Failed to parse AI response as JSON. Raw output was:', rawResponse);
     throw new Error('AI did not return a valid JSON format. Please try again.');
