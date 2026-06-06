@@ -82,73 +82,95 @@ export default function App() {
   const [indexingLogs, setIndexingLogs] = useState([]);
   const [installProgress, setInstallProgress] = useState(0);
 
+  // Helper to dynamically calculate initial centered window positions
+  const getInitialWindows = () => {
+    const isClient = typeof window !== 'undefined';
+    const w = isClient ? window.innerWidth : 1024;
+    const h = isClient ? window.innerHeight : 768;
+
+    return {
+      help: { 
+        id: 'help', 
+        title: 'Help Manual - READ.ME', 
+        isOpen: true, 
+        isActive: false, 
+        zIndex: 2, 
+        icon: '❓',
+        x: Math.max(10, Math.round((w - 440) / 2) - 30),
+        y: Math.max(10, Math.round((h - 380) / 2) - 30),
+        width: '440px',
+        height: '380px'
+      },
+      settings: { 
+        id: 'settings', 
+        title: 'API Configuration & Auth Settings', 
+        isOpen: true, 
+        isActive: true, 
+        zIndex: 3, 
+        icon: '⚙️',
+        x: Math.max(10, Math.round((w - 420) / 2) + 30),
+        y: Math.max(10, Math.round((h - 480) / 2) + 30),
+        width: '420px',
+        height: '480px'
+      },
+      graph: { 
+        id: 'graph', 
+        title: 'Stars Map Explorer v1.0', 
+        isOpen: false, 
+        isActive: false, 
+        zIndex: 1, 
+        icon: '🕸️',
+        x: Math.max(10, Math.round((w - 640) / 2)),
+        y: Math.max(10, Math.round((h - 480) / 2)),
+        width: '640px',
+        height: '480px'
+      },
+      detail: { 
+        id: 'detail', 
+        title: 'Properties - Explorer View', 
+        isOpen: false, 
+        isActive: false, 
+        zIndex: 1, 
+        icon: '🔍',
+        x: Math.max(10, Math.round((w - 320) / 2) + 160),
+        y: Math.max(10, Math.round((h - 420) / 2) + 40),
+        width: '320px',
+        height: '420px'
+      }
+    };
+  };
+
   // 5. Windows Management
-  const [windows, setWindows] = useState({
-    help: { 
-      id: 'help', 
-      title: 'Help Manual - READ.ME', 
-      isOpen: true, 
-      isActive: false, 
-      zIndex: 2, 
-      icon: '❓',
-      x: 30,
-      y: 40,
-      width: '440px',
-      height: '380px'
-    },
-    settings: { 
-      id: 'settings', 
-      title: 'API Configuration & Auth Settings', 
-      isOpen: true, 
-      isActive: true, 
-      zIndex: 3, 
-      icon: '⚙️',
-      x: 100,
-      y: 80,
-      width: '420px',
-      height: '480px'
-    },
-    graph: { 
-      id: 'graph', 
-      title: 'Stars Map Explorer v1.0', 
-      isOpen: false, 
-      isActive: false, 
-      zIndex: 1, 
-      icon: '🕸️',
-      x: 350,
-      y: 50,
-      width: '640px',
-      height: '480px'
-    },
-    detail: { 
-      id: 'detail', 
-      title: 'Properties - Explorer View', 
-      isOpen: false, 
-      isActive: false, 
-      zIndex: 1, 
-      icon: '🔍',
-      x: 680,
-      y: 120,
-      width: '320px',
-      height: '420px'
-    }
-  });
+  const [windows, setWindows] = useState(getInitialWindows());
 
 
 
   // Window focusing / Layer management
   const focusWindow = (id) => {
     setWindows(prev => {
-      // Find highest active Z-index
-      const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex), 3);
+      // Find highest active Z-index (excluding detail)
+      const maxZ = Math.max(...Object.entries(prev).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
       const updated = {};
       Object.entries(prev).forEach(([winId, win]) => {
+        let newZ = win.zIndex;
+        if (winId === id) {
+          newZ = maxZ + 1;
+        }
         updated[winId] = {
           ...win,
           isActive: winId === id,
-          zIndex: winId === id ? maxZ + 1 : win.zIndex
+          zIndex: newZ
         };
       });
+
+      // If detail is open, ensure its zIndex is always the absolute highest (at least maxZ + 2)
+      if (prev.detail.isOpen) {
+        const currentHighestZ = Math.max(...Object.entries(updated).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
+        updated.detail.zIndex = currentHighestZ + 1;
+        if (id === 'detail') {
+          updated.detail.isActive = true;
+        }
+      }
       return updated;
     });
   };
@@ -161,8 +183,9 @@ export default function App() {
       if (nextOpen) {
         // Play disk read noise on open
         audio.playClick();
-        // Set Z-index to top
-        const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex), 3);
+        
+        // Find highest active Z-index (excluding detail)
+        const maxZ = Math.max(...Object.entries(prev).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
         const updated = {};
         Object.entries(prev).forEach(([winId, w]) => {
           updated[winId] = {
@@ -172,6 +195,13 @@ export default function App() {
             zIndex: winId === id ? maxZ + 1 : w.zIndex
           };
         });
+
+        // Ensure detail is highest if open
+        if (updated.detail.isOpen) {
+          const currentHighestZ = Math.max(...Object.entries(updated).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
+          updated.detail.zIndex = currentHighestZ + 1;
+        }
+
         return updated;
       } else {
         return {
@@ -330,10 +360,25 @@ export default function App() {
 
   const handleSelectNode = (node) => {
     setSelectedNode(node);
-    setWindows(prev => ({
-      ...prev,
-      detail: { ...prev.detail, isOpen: true, isActive: true, zIndex: 20 }
-    }));
+    setWindows(prev => {
+      // Find highest active Z-index (excluding detail)
+      const maxZ = Math.max(...Object.entries(prev).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
+      const updated = {};
+      Object.entries(prev).forEach(([winId, w]) => {
+        updated[winId] = {
+          ...w,
+          isOpen: winId === 'detail' ? true : w.isOpen,
+          isActive: winId === 'detail',
+          zIndex: winId === 'detail' ? maxZ + 1 : w.zIndex
+        };
+      });
+
+      // Ensure detail is highest
+      const currentHighestZ = Math.max(...Object.entries(updated).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
+      updated.detail.zIndex = currentHighestZ + 1;
+
+      return updated;
+    });
   };
 
   return (

@@ -121,6 +121,14 @@ export default function GraphWindow({
     // Customize node rendering on Canvas to show labels and focus highlights
     graph.nodeCanvasObject(drawNode);
 
+    // Ensure click target area matches the visually drawn node size (with padding for ease of interaction)
+    graph.nodePointerAreaPaint((node, color, ctx) => {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.val + 2, 0, 2 * Math.PI, false);
+      ctx.fillStyle = color;
+      ctx.fill();
+    });
+
     graphInstanceRef.current = graph;
 
     // Implement ResizeObserver to set graph bounds dynamically
