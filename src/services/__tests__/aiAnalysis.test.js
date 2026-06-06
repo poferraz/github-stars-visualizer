@@ -127,16 +127,57 @@ describe('AI Stars Analysis Coordinator', () => {
     expect(logs.some(l => l.includes('1 semantic connection'))).toBe(true);
   });
 
-  it('should throw an error if JSON is completely invalid', async () => {
+  it('should fallback gracefully to language-based categories and default structures if JSON is completely invalid', async () => {
     aiRouter.sendMessage.mockResolvedValueOnce('This is not JSON at all');
 
-    await expect(
-      analyzeStars({
-        repositories: [{ full_name: 'owner/repo', description: 'desc', language: 'JS' }],
-        provider: 'gemini',
-        apiKey: 'key',
-        model: 'model'
-      })
-    ).rejects.toThrow('AI did not return a valid JSON format.');
+    const result = await analyzeStars({
+      repositories: [{ full_name: 'owner/repo', description: 'desc', language: 'JavaScript' }],
+      provider: 'gemini',
+      apiKey: 'key',
+      model: 'model'
+    });
+
+    expect(result).toHaveProperty('owner/repo');
+    expect(result['owner/repo'].category).toBe('JavaScript');
+    expect(result['owner/repo'].summary).toBe('desc');
+    expect(result['owner/repo'].related).toEqual([]);
+  });
+
+  it('should recover using heuristic parsing when JSON has unescaped newlines and invalid relations', async () => {
+    const malformedResponse = `
+    {
+      "owner/repo1": {
+        "category": "Frontend Frameworks",
+        "summary": "This is a multiline summary.
+        It has unescaped newlines.",
+        "related": ["owner/repo2"]
+      },
+      "owner/repo2": {
+        "category": "Backend Tools",
+        "summary": "Some backend tool.",
+        "related": ["nonexistent/repo"]
+      }
+    }
+    `;
+
+    aiRouter.sendMessage.mockResolvedValueOnce(malformedResponse);
+
+    const result = await analyzeStars({
+      repositories: [
+        { full_name: 'owner/repo1', description: 'desc1', language: 'JS' },
+        { full_name: 'owner/repo2', description: 'desc2', language: 'TS' }
+      ],
+      provider: 'gemini',
+      apiKey: 'key',
+      model: 'model'
+    });
+
+    expect(result).toHaveProperty('owner/repo1');
+    expect(result['owner/repo1'].category).toBe('Frontend Frameworks');
+    expect(result['owner/repo1'].related).toEqual(['owner/repo2']);
+    
+    expect(result).toHaveProperty('owner/repo2');
+    // Ensure nonexistent relation got filtered out to prevent crash
+    expect(result['owner/repo2'].related).toEqual([]);
   });
 });
