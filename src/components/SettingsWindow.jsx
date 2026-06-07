@@ -176,7 +176,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
               type="text"
               className="layout-flex"
               style={{ width: '100%' }}
-              placeholder="e.g. http://localhost:11434/v1/chat/completions"
+              placeholder="e.g. https://ollama.com/v1/chat/completions"
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
             />
