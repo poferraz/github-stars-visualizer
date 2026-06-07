@@ -64,11 +64,12 @@ export const aiRouter = {
         break;
       }
       case 'custom': {
-        url = customUrl;
-        headers['Authorization'] = `Bearer ${apiKey}`;
+        url = typeof window !== 'undefined' ? `${window.location.origin}/api/ai-proxy` : '/api/ai-proxy';
         body = {
-          model: model,
-          messages: [{ role: 'user', content: prompt }]
+          targetUrl: customUrl,
+          apiKey,
+          model,
+          prompt
         };
         break;
       }

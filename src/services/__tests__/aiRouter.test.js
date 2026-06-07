@@ -125,4 +125,46 @@ describe('Universal AI Router', () => {
       })
     ).rejects.toThrow('API rate limit reached (HTTP 429).');
   });
+
+  it('should successfully make a request to the custom provider via the proxy', async () => {
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://git-starmap.vercel.app'
+      }
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'Custom proxy response' } }]
+      })
+    });
+
+    const response = await aiRouter.sendMessage({
+      provider: 'custom',
+      apiKey: 'custom-fake-key',
+      model: 'gpt-oss:20b',
+      prompt: 'Summarize these stars',
+      customUrl: 'https://ollama.com/v1/chat/completions'
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://git-starmap.vercel.app/api/ai-proxy',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+          targetUrl: 'https://ollama.com/v1/chat/completions',
+          apiKey: 'custom-fake-key',
+          model: 'gpt-oss:20b',
+          prompt: 'Summarize these stars'
+        })
+      })
+    );
+    expect(response).toBe('Custom proxy response');
+
+    vi.unstubAllGlobals();
+  });
 });
