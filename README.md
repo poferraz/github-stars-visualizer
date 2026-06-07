@@ -9,13 +9,13 @@
 </p>
 
 <p align="center">
-  <a href="https://git-start.vercel.app/">
+  <a href="https://git-starmap.vercel.app/](https://git-starmap.vercel.app/">
     <img src="https://img.shields.io/badge/Live_Demo-Try_It_Online-FF5733?style=for-the-badge&logo=vercel" alt="Live Demo" />
   </a>
 </p>
 
 <p align="center">
-  <strong>⚡ Try it online! Link your read-only token and explore your stars instantly: <a href="https://git-start.vercel.app/">git-start.vercel.app</a> ⚡</strong>
+  <strong>⚡ Try it online! Link your read-only token and explore your stars instantly: <a href="https://git-starmap.vercel.app/">git-starmap.vercel.app</a> ⚡</strong>
 </p>
 
 
