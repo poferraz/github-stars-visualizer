@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://git-starmap.vercel.app/](https://git-starmap.vercel.app/">
+  <a href="https://git-starmap.vercel.app/">
     <img src="https://img.shields.io/badge/Live_Demo-Try_It_Online-FF5733?style=for-the-badge&logo=vercel" alt="Live Demo" />
   </a>
 </p>
