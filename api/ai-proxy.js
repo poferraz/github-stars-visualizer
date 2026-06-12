@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   let parsedUrl;
   try {
     parsedUrl = new URL(targetUrl);
-  } catch (err) {
+  } catch {
     return res.status(400).json({ error: 'Invalid targetUrl format' });
   }
 
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     let data;
     try {
       data = await upstream.json();
-    } catch (e) {
+    } catch {
       data = {};
     }
 

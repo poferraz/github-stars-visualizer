@@ -1,4 +1,3 @@
-import React from 'react';
 import { audio } from '../utils/audio';
 
 export default function DesktopIcon({ title, icon, isSelected, onClick, onDoubleClick }) {

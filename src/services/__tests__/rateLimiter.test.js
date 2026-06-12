@@ -11,7 +11,7 @@ const localStorageMock = (() => {
     clear: () => { store = {}; }
   };
 })();
-global.localStorage = localStorageMock;
+globalThis.localStorage = localStorageMock;
 
 describe('Local Rate Limiter Security Guard', () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { audio } from '../utils/audio';
 import { aiRouter } from '../services/aiRouter';
 
@@ -14,7 +14,12 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
   // Testing connection state
   const [testStatus, setTestStatus] = useState({ state: 'idle', message: '' });
 
-  useEffect(() => {
+  // Re-sync the form when the settings object changes from outside (e.g.
+  // Reset All). Render-time adjustment per React docs — avoids the
+  // setState-in-effect cascade.
+  const [prevSettings, setPrevSettings] = useState(settings);
+  if (prevSettings !== settings) {
+    setPrevSettings(settings);
     setUsername(settings.username || '');
     setGithubToken(settings.githubToken || '');
     setMaxStars(settings.maxStars || 50);
@@ -22,7 +27,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
     setApiKey(settings.apiKey || '');
     setModel(settings.model || 'gemini-2.5-flash');
     setCustomUrl(settings.customUrl || '');
-  }, [settings]);
+  }
 
   const handleSave = (e) => {
     e.preventDefault();

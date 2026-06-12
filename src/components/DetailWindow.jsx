@@ -1,4 +1,3 @@
-import React from 'react';
 import { audio } from '../utils/audio';
 
 export default function DetailWindow({ node, allNodes, allLinks, onSelectNode, onClose }) {

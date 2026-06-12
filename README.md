@@ -145,7 +145,7 @@ You will need:
 *   **UI Framework:** React 19 + Vite 8
 *   **Graph Renderer:** Canvas-based `force-graph`
 *   **Styling:** Vanilla CSS (retro custom bevels & layouts)
-*   **Test Suite:** Vitest (15 unit tests verifying rates, routers, and graph builders)
+*   **Test Suite:** Vitest (unit tests covering the rate limiter, AI router, AI analysis, GitHub service, graph builder, and radial layout)
 *   **Sound Synth:** Native HTML5 Web Audio API
 
 ---

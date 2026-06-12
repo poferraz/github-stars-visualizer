@@ -9,11 +9,11 @@ export const aiRouter = {
     // 1. Guard check for local rate limiting
     rateLimiter.checkLimit();
 
-    let url = '';
-    let headers = {
+    let url;
+    let body;
+    const headers = {
       'Content-Type': 'application/json'
     };
-    let body = {};
 
     switch (provider) {
       case 'gemini': {
@@ -86,7 +86,7 @@ export const aiRouter = {
         body: JSON.stringify(body)
       });
     } catch (err) {
-      throw new Error(`Network error calling AI service: ${err.message}`);
+      throw new Error(`Network error calling AI service: ${err.message}`, { cause: err });
     }
 
     // 3. Handle rate limits & HTTP errors
@@ -99,7 +99,7 @@ export const aiRouter = {
       try {
         const errJson = await response.json();
         errorMsg += `: ${errJson.error?.message || errJson.message || JSON.stringify(errJson)}`;
-      } catch (e) {
+      } catch {
         // Fallback to text status
         errorMsg += ` (${response.statusText})`;
       }
@@ -108,20 +108,20 @@ export const aiRouter = {
 
     // 4. Parse response
     const data = await response.json();
-    let text = '';
+    let text;
 
     if (provider === 'gemini') {
       try {
         text = data.candidates[0].content.parts[0].text;
       } catch (err) {
-        throw new Error('Invalid response structure received from Gemini API.');
+        throw new Error('Invalid response structure received from Gemini API.', { cause: err });
       }
     } else {
       // Chat completion style (OpenRouter, OpenAI, Groq, Custom)
       try {
         text = data.choices[0].message.content;
       } catch (err) {
-        throw new Error('Invalid chat completions structure received from AI provider.');
+        throw new Error('Invalid chat completions structure received from AI provider.', { cause: err });
       }
     }
 

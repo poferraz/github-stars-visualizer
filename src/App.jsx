@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import WindowFrame from './components/WindowFrame';
 import DesktopIcon from './components/DesktopIcon';
 import SettingsWindow from './components/SettingsWindow';
@@ -30,7 +30,7 @@ export default function App() {
         model: 'gemini-2.5-flash',
         customUrl: ''
       };
-    } catch (e) {
+    } catch {
       return { username: '', githubToken: '', maxStars: 50, provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash', customUrl: '' };
     }
   });
@@ -40,7 +40,7 @@ export default function App() {
     try {
       const stored = localStorage.getItem('gitstars_cached_repos');
       return stored ? JSON.parse(stored) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   });
@@ -48,7 +48,7 @@ export default function App() {
     try {
       const stored = localStorage.getItem('gitstars_cached_ai');
       return stored ? JSON.parse(stored) : {};
-    } catch (e) {
+    } catch {
       return {};
     }
   });

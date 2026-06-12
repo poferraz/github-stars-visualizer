@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ForceGraph from 'force-graph';
 import { forceCollide } from 'd3-force-3d';
 import { audio } from '../utils/audio';
@@ -42,13 +42,17 @@ export default function GraphWindow({
     layoutModeRef.current = layoutMode;
   }, [layoutMode]);
 
-  // Store dynamic props in refs for canvas rendering and event handlers
+  // Store dynamic props in refs for canvas rendering and event handlers.
+  // Synced in an effect (not during render) per the react-hooks/refs rule;
+  // the redraw effect below depends on the same values and runs after this.
   const searchQueryRef = useRef(searchQuery);
-  searchQueryRef.current = searchQuery;
   const selectedNodeIdRef = useRef(selectedNodeId);
-  selectedNodeIdRef.current = selectedNodeId;
   const onSelectNodeRef = useRef(onSelectNode);
-  onSelectNodeRef.current = onSelectNode;
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+    selectedNodeIdRef.current = selectedNodeId;
+    onSelectNodeRef.current = onSelectNode;
+  }, [searchQuery, selectedNodeId, onSelectNode]);
 
   // Node drawing logic used by both initial mount and redraw triggers
   const drawNode = (node, ctx, globalScale) => {

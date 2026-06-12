@@ -23,7 +23,7 @@ export async function fetchStarredRepos(username, token = '', maxStars = 150) {
     try {
       res = await fetch(url, { headers });
     } catch (err) {
-      throw new Error(`Network error connecting to GitHub: ${err.message}`);
+      throw new Error(`Network error connecting to GitHub: ${err.message}`, { cause: err });
     }
 
     if (res.status === 403 || res.status === 429) {
@@ -76,7 +76,7 @@ export async function fetchStarredReposPaged(username, token = '', page = 1, per
   try {
     res = await fetch(url, { headers });
   } catch (err) {
-    throw new Error(`Network error connecting to GitHub: ${err.message}`);
+    throw new Error(`Network error connecting to GitHub: ${err.message}`, { cause: err });
   }
 
   if (res.status === 403 || res.status === 429) {

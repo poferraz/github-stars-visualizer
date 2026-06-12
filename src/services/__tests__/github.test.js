@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fetchStarredReposPaged } from '../github';
 
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+globalThis.fetch = mockFetch;
 
 describe('GitHub Stars Service - Paginated Fetching', () => {
   beforeEach(() => {

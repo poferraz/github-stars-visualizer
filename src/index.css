@@ -2,7 +2,7 @@
    Retro OS 90s-2000s Design System (Win95/Classic OS)
    ========================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 
 :root {
   --os-bg: #008080; /* Classic Teal */

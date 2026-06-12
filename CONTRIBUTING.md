@@ -44,7 +44,7 @@ We use **Vitest** for our unit tests. All business logic, rates/rate-limiting co
     ```
 
 > [!IMPORTANT]
-> **If you add a new utility or service, you must write a corresponding test file under `__tests__/`** and verify that all 26+ tests pass successfully before submitting a pull request.
+> **If you add a new utility or service, you must write a corresponding test file under `__tests__/`** and verify that the full test suite passes (`npm test`) before submitting a pull request.
 
 ---
 

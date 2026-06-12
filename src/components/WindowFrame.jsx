@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { audio } from '../utils/audio';
 
 export default function WindowFrame({
-  id,
   title,
   isOpen,
   onClose,
@@ -39,20 +38,6 @@ export default function WindowFrame({
     });
   };
 
-  const handleMouseMove = (e) => {
-    if (!dragging) return;
-    
-    // Bounds check to keep title bar on screen
-    const newX = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragStart.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - dragStart.y));
-    
-    setPos({ x: newX, y: newY });
-  };
-
-  const handleMouseUp = () => {
-    setDragging(false);
-  };
-
   // Add touch support for mobile drag-and-drop
   const handleTouchStart = (e) => {
     if (isMaximized) return;
@@ -67,26 +52,30 @@ export default function WindowFrame({
     });
   };
 
-  const handleTouchMove = (e) => {
-    if (!dragging) return;
-    const touch = e.touches[0];
-    const newX = Math.max(0, Math.min(window.innerWidth - 100, touch.clientX - dragStart.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 40, touch.clientY - dragStart.y));
-    setPos({ x: newX, y: newY });
-  };
-
+  // Move/up handlers live inside the effect so listener identity and the
+  // dragStart they close over always match the current drag session
   useEffect(() => {
-    if (dragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleTouchMove);
-      window.addEventListener('touchend', handleMouseUp);
-    }
+    if (!dragging) return;
+
+    const moveTo = (clientX, clientY) => {
+      // Bounds check to keep title bar on screen
+      const newX = Math.max(0, Math.min(window.innerWidth - 100, clientX - dragStart.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - 40, clientY - dragStart.y));
+      setPos({ x: newX, y: newY });
+    };
+    const handleMouseMove = (e) => moveTo(e.clientX, e.clientY);
+    const handleTouchMove = (e) => moveTo(e.touches[0].clientX, e.touches[0].clientY);
+    const handleUp = () => setDragging(false);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleUp);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mouseup', handleUp);
       window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleMouseUp);
+      window.removeEventListener('touchend', handleUp);
     };
   }, [dragging, dragStart]);
 
