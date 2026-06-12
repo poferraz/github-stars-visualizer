@@ -11,6 +11,16 @@ import { fetchStarredRepos } from './services/github';
 import { analyzeStars } from './services/aiAnalysis';
 import { buildGraphData } from './utils/graphBuilder';
 import { storage } from './services/storage';
+import { useWindowManager } from './os/useWindowManager';
+
+// Window chrome definitions: geometry defaults; live state (position, size,
+// stacking, visibility) is owned by useWindowManager and persisted per user
+const WINDOW_DEFS = {
+  help: { title: 'Help Manual - READ.ME', icon: '❓', defaultOpen: true, width: 440, height: 380, offsetX: -30, offsetY: -30 },
+  settings: { title: 'API Configuration & Auth Settings', icon: '⚙️', defaultOpen: true, width: 420, height: 480, offsetX: 30, offsetY: 30 },
+  graph: { title: 'Stars Map Explorer v1.0', icon: '🕸️', defaultOpen: false, width: 640, height: 480, defaultMaximized: true },
+  detail: { title: 'Properties - Explorer View', icon: '🔍', defaultOpen: false, width: 320, height: 420, offsetX: 160, offsetY: 40 }
+};
 
 const DEFAULT_SETTINGS = {
   username: '',
@@ -73,135 +83,9 @@ export default function App() {
   const [indexingLogs, setIndexingLogs] = useState([]);
   const [installProgress, setInstallProgress] = useState(0);
 
-  // Helper to dynamically calculate initial centered window positions
-  const getInitialWindows = () => {
-    const isClient = typeof window !== 'undefined';
-    const w = isClient ? window.innerWidth : 1024;
-    const h = isClient ? window.innerHeight : 768;
-
-    return {
-      help: { 
-        id: 'help', 
-        title: 'Help Manual - READ.ME', 
-        isOpen: true, 
-        isActive: false, 
-        zIndex: 2, 
-        icon: '❓',
-        x: Math.max(10, Math.round((w - 440) / 2) - 30),
-        y: Math.max(10, Math.round((h - 380) / 2) - 30),
-        width: '440px',
-        height: '380px'
-      },
-      settings: { 
-        id: 'settings', 
-        title: 'API Configuration & Auth Settings', 
-        isOpen: true, 
-        isActive: true, 
-        zIndex: 3, 
-        icon: '⚙️',
-        x: Math.max(10, Math.round((w - 420) / 2) + 30),
-        y: Math.max(10, Math.round((h - 480) / 2) + 30),
-        width: '420px',
-        height: '480px'
-      },
-      graph: { 
-        id: 'graph', 
-        title: 'Stars Map Explorer v1.0', 
-        isOpen: false, 
-        isActive: false, 
-        zIndex: 1, 
-        icon: '🕸️',
-        x: Math.max(10, Math.round((w - 640) / 2)),
-        y: Math.max(10, Math.round((h - 480) / 2)),
-        width: '640px',
-        height: '480px'
-      },
-      detail: { 
-        id: 'detail', 
-        title: 'Properties - Explorer View', 
-        isOpen: false, 
-        isActive: false, 
-        zIndex: 1, 
-        icon: '🔍',
-        x: Math.max(10, Math.round((w - 320) / 2) + 160),
-        y: Math.max(10, Math.round((h - 420) / 2) + 40),
-        width: '320px',
-        height: '420px'
-      }
-    };
-  };
-
-  // 5. Windows Management
-  const [windows, setWindows] = useState(getInitialWindows());
-
-
-
-  // Window focusing / Layer management
-  const focusWindow = (id) => {
-    setWindows(prev => {
-      // Find highest active Z-index (excluding detail)
-      const maxZ = Math.max(...Object.entries(prev).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
-      const updated = {};
-      Object.entries(prev).forEach(([winId, win]) => {
-        let newZ = win.zIndex;
-        if (winId === id) {
-          newZ = maxZ + 1;
-        }
-        updated[winId] = {
-          ...win,
-          isActive: winId === id,
-          zIndex: newZ
-        };
-      });
-
-      // If detail is open, ensure its zIndex is always the absolute highest (at least maxZ + 2)
-      if (prev.detail.isOpen) {
-        const currentHighestZ = Math.max(...Object.entries(updated).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
-        updated.detail.zIndex = currentHighestZ + 1;
-        if (id === 'detail') {
-          updated.detail.isActive = true;
-        }
-      }
-      return updated;
-    });
-  };
-
-  const toggleWindow = (id) => {
-    setWindows(prev => {
-      const win = prev[id];
-      const nextOpen = !win.isOpen;
-      
-      if (nextOpen) {
-        // Play disk read noise on open
-        audio.playClick();
-        
-        // Find highest active Z-index (excluding detail)
-        const maxZ = Math.max(...Object.entries(prev).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
-        const updated = {};
-        Object.entries(prev).forEach(([winId, w]) => {
-          updated[winId] = {
-            ...w,
-            isOpen: winId === id ? true : w.isOpen,
-            isActive: winId === id,
-            zIndex: winId === id ? maxZ + 1 : w.zIndex
-          };
-        });
-
-        // Ensure detail is highest if open
-        if (updated.detail.isOpen) {
-          const currentHighestZ = Math.max(...Object.entries(updated).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
-          updated.detail.zIndex = currentHighestZ + 1;
-        }
-
-        return updated;
-      } else {
-        return {
-          ...prev,
-          [id]: { ...win, isOpen: false, isActive: false }
-        };
-      }
-    });
-  };
+  // 5. Window manager: position/size/stacking/visibility in one reducer
+  const wm = useWindowManager(WINDOW_DEFS);
+  const { windows } = wm;
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
@@ -217,10 +101,7 @@ export default function App() {
       setMinStars(0);
     }
 
-    setWindows(prev => ({
-      ...prev,
-      settings: { ...prev.settings, isOpen: false, isActive: false }
-    }));
+    wm.close('settings');
   };
 
   const handleResetAll = () => {
@@ -233,20 +114,17 @@ export default function App() {
     setMinStars(0);
     setSelectedNode(null);
     audio.playError();
-    
-    setWindows(prev => ({
-      ...prev,
-      settings: { ...prev.settings, isOpen: true, isActive: true },
-      graph: { ...prev.graph, isOpen: false },
-      detail: { ...prev.detail, isOpen: false }
-    }));
+
+    wm.close('graph');
+    wm.close('detail');
+    wm.open('settings');
   };
 
   // Coordinated stars fetching & AI mapping
   const handleStartIndexing = async () => {
     if (!settings.username) {
       alert('Error: Please configure your GitHub Username in Settings first!');
-      toggleWindow('settings');
+      wm.open('settings');
       return;
     }
 
@@ -335,10 +213,7 @@ export default function App() {
       // Delay slightly so user sees 100% completion before opening graph
       setTimeout(() => {
         setIsIndexing(false);
-        setWindows(prev => ({
-          ...prev,
-          graph: { ...prev.graph, isOpen: true, isActive: true, zIndex: 10 }
-        }));
+        wm.open('graph');
       }, 800);
 
     } catch (err) {
@@ -352,25 +227,10 @@ export default function App() {
 
   const handleSelectNode = (node) => {
     setSelectedNode(node);
-    setWindows(prev => {
-      // Find highest active Z-index (excluding detail)
-      const maxZ = Math.max(...Object.entries(prev).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
-      const updated = {};
-      Object.entries(prev).forEach(([winId, w]) => {
-        updated[winId] = {
-          ...w,
-          isOpen: winId === 'detail' ? true : w.isOpen,
-          isActive: winId === 'detail',
-          zIndex: winId === 'detail' ? maxZ + 1 : w.zIndex
-        };
-      });
-
-      // Ensure detail is highest
-      const currentHighestZ = Math.max(...Object.entries(updated).map(([winId, w]) => winId === 'detail' ? 0 : w.zIndex), 3);
-      updated.detail.zIndex = currentHighestZ + 1;
-
-      return updated;
-    });
+    // Auto-focus the properties window on selection; afterwards it stacks
+    // normally (no forced always-on-top), so it can't permanently occlude
+    // the graph it describes
+    wm.open('detail');
   };
 
   return (
@@ -412,14 +272,14 @@ export default function App() {
               icon="💻"
               isSelected={selectedIcon === 'my_computer'}
               onClick={() => setSelectedIcon('my_computer')}
-              onDoubleClick={() => toggleWindow('help')}
+              onDoubleClick={() => wm.toggle('help')}
             />
             <DesktopIcon
               title="API Settings"
               icon="⚙️"
               isSelected={selectedIcon === 'settings'}
               onClick={() => setSelectedIcon('settings')}
-              onDoubleClick={() => toggleWindow('settings')}
+              onDoubleClick={() => wm.toggle('settings')}
             />
             <DesktopIcon
               title="Stars Map"
@@ -428,7 +288,7 @@ export default function App() {
               onClick={() => setSelectedIcon('graph')}
               onDoubleClick={() => {
                 if (repositories.length > 0) {
-                  toggleWindow('graph');
+                  wm.toggle('graph');
                 } else {
                   handleStartIndexing();
                 }
@@ -439,46 +299,38 @@ export default function App() {
               icon="❓"
               isSelected={selectedIcon === 'help'}
               onClick={() => setSelectedIcon('help')}
-              onDoubleClick={() => toggleWindow('help')}
+              onDoubleClick={() => wm.toggle('help')}
             />
 
             {/* Draggable Help Window */}
             <WindowFrame
-              id="help"
-              title={windows.help.title}
-              isOpen={windows.help.isOpen}
+              win={windows.help}
               isActive={windows.help.isActive}
               zIndex={windows.help.zIndex}
-              defaultX={windows.help.x}
-              defaultY={windows.help.y}
-              width={windows.help.width}
-              height={windows.help.height}
-              icon={windows.help.icon}
-              onClose={() => toggleWindow('help')}
-              onFocus={() => focusWindow('help')}
+              onClose={() => wm.close('help')}
+              onFocus={() => wm.focus('help')}
+              onMove={(x, y) => wm.move('help', x, y)}
+              onResize={(w, h) => wm.resize('help', w, h)}
+              onToggleMaximize={() => wm.toggleMaximize('help')}
             >
-              <HelpWindow onClose={() => toggleWindow('help')} />
+              <HelpWindow onClose={() => wm.close('help')} />
             </WindowFrame>
 
             {/* Draggable Settings Window */}
             <WindowFrame
-              id="settings"
-              title={windows.settings.title}
-              isOpen={windows.settings.isOpen}
+              win={windows.settings}
               isActive={windows.settings.isActive}
               zIndex={windows.settings.zIndex}
-              defaultX={windows.settings.x}
-              defaultY={windows.settings.y}
-              width={windows.settings.width}
-              height={windows.settings.height}
-              icon={windows.settings.icon}
-              onClose={() => toggleWindow('settings')}
-              onFocus={() => focusWindow('settings')}
+              onClose={() => wm.close('settings')}
+              onFocus={() => wm.focus('settings')}
+              onMove={(x, y) => wm.move('settings', x, y)}
+              onResize={(w, h) => wm.resize('settings', w, h)}
+              onToggleMaximize={() => wm.toggleMaximize('settings')}
             >
               <SettingsWindow 
                 settings={settings} 
                 onSave={handleSaveSettings} 
-                onClose={() => toggleWindow('settings')} 
+                onClose={() => wm.close('settings')} 
               />
             </WindowFrame>
 
@@ -584,19 +436,14 @@ export default function App() {
 
             {/* Draggable Mind Map Graph Window */}
             <WindowFrame
-              id="graph"
-              title={windows.graph.title}
-              isOpen={windows.graph.isOpen}
+              win={windows.graph}
               isActive={windows.graph.isActive}
               zIndex={windows.graph.zIndex}
-              defaultX={windows.graph.x}
-              defaultY={windows.graph.y}
-              width={windows.graph.width}
-              height={windows.graph.height}
-              icon={windows.graph.icon}
-              defaultMaximized={true}
-              onClose={() => toggleWindow('graph')}
-              onFocus={() => focusWindow('graph')}
+              onClose={() => wm.close('graph')}
+              onFocus={() => wm.focus('graph')}
+              onMove={(x, y) => wm.move('graph', x, y)}
+              onResize={(w, h) => wm.resize('graph', w, h)}
+              onToggleMaximize={() => wm.toggleMaximize('graph')}
             >
               <div className="layout-col" style={{ height: '100%' }}>
                 {/* Floating search highlight box inside window header area */}
@@ -653,25 +500,21 @@ export default function App() {
 
             {/* Draggable Properties Window */}
             <WindowFrame
-              id="detail"
-              title={windows.detail.title}
-              isOpen={windows.detail.isOpen}
+              win={windows.detail}
               isActive={windows.detail.isActive}
               zIndex={windows.detail.zIndex}
-              defaultX={windows.detail.x}
-              defaultY={windows.detail.y}
-              width={windows.detail.width}
-              height={windows.detail.height}
-              icon={windows.detail.icon}
-              onClose={() => toggleWindow('detail')}
-              onFocus={() => focusWindow('detail')}
+              onClose={() => wm.close('detail')}
+              onFocus={() => wm.focus('detail')}
+              onMove={(x, y) => wm.move('detail', x, y)}
+              onResize={(w, h) => wm.resize('detail', w, h)}
+              onToggleMaximize={() => wm.toggleMaximize('detail')}
             >
               <DetailWindow 
                 node={selectedNode} 
                 allNodes={currentGraphData.nodes}
                 allLinks={currentGraphData.links}
                 onSelectNode={handleSelectNode}
-                onClose={() => toggleWindow('detail')}
+                onClose={() => wm.close('detail')}
               />
             </WindowFrame>
 
@@ -681,8 +524,8 @@ export default function App() {
           <Taskbar
             windows={windows}
             crtEnabled={crtEnabled}
-            onToggleWindow={toggleWindow}
-            onFocusWindow={focusWindow}
+            onToggleWindow={wm.toggle}
+            onFocusWindow={wm.focus}
             onToggleCrt={() => {
               audio.playClick();
               setCrtEnabled(!crtEnabled);

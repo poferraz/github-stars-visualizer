@@ -469,6 +469,22 @@ label {
   gap: 6px;
 }
 
+/* Bottom-right resize grip: classic Win95 diagonal ridges */
+.win95-resize-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 3px,
+    var(--os-shadow) 3px 4px,
+    var(--os-light) 4px 5px
+  );
+}
+
 /* Hover tooltip injected by the force-graph library: restyle as a classic
    Win95 yellow tooltip. !important is required to beat the library's own
    inline-injected styles. */
