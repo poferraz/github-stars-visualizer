@@ -1,4 +1,7 @@
+import { storage } from '../services/storage';
+
 let audioCtx = null;
+let muted = storage.read('muted', false, (v) => typeof v === 'boolean');
 
 function getAudioContext() {
   if (!audioCtx) {
@@ -14,7 +17,17 @@ function getAudioContext() {
 }
 
 export const audio = {
+  isMuted() {
+    return muted;
+  },
+
+  setMuted(value) {
+    muted = !!value;
+    storage.write('muted', muted);
+  },
+
   playClick() {
+    if (muted) return;
     try {
       const ctx = getAudioContext();
       const osc = ctx.createOscillator();
@@ -37,6 +50,7 @@ export const audio = {
   },
   
   playSuccess() {
+    if (muted) return;
     try {
       const ctx = getAudioContext();
       const now = ctx.currentTime;
@@ -61,6 +75,7 @@ export const audio = {
   },
   
   playError() {
+    if (muted) return;
     try {
       const ctx = getAudioContext();
       const now = ctx.currentTime;
@@ -83,6 +98,7 @@ export const audio = {
   },
   
   async playFloppySeek(durationMs = 1500) {
+    if (muted) return; // skip the pacing delay too — silence shouldn't slow indexing
     try {
       const ctx = getAudioContext();
       const steps = Math.floor(durationMs / 120);

@@ -53,6 +53,19 @@ export default function HelpWindow({ onClose }) {
           <li>
             <strong>Local Guardrails:</strong> Our built-in rate limiter monitors your requests per-minute and per-day in local storage, blocking requests client-side before they can reach the limits.
           </li>
+          <li>
+            <strong>Local AI (Ollama):</strong> Pick the Custom provider and point it at your local endpoint (e.g. <code style={{ fontFamily: 'var(--font-mono)' }}>http://localhost:11434/v1/chat/completions</code>). Start Ollama with <code style={{ fontFamily: 'var(--font-mono)' }}>OLLAMA_ORIGINS</code> set so the browser may call it. No key needed.
+          </li>
+        </ul>
+      </fieldset>
+
+      {/* Keyboard & windows */}
+      <fieldset className="win95-raised" style={{ padding: '10px', marginBottom: '12px' }}>
+        <legend style={{ padding: '0 4px', fontWeight: 'bold' }}>⌨️ Windows & Shortcuts</legend>
+        <ul style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <li>Drag windows by the title bar; resize from the bottom-right grip; double-click the title bar to maximize.</li>
+          <li><strong>Esc</strong> closes the active window · <strong>F6</strong> cycles window focus.</li>
+          <li>The map shows your <strong>500 most recent stars</strong> at most; toggle 🕸️ Web / 🌀 Force layouts inside the map; press <strong>Enter</strong> in the search box to fly to a match.</li>
         </ul>
       </fieldset>
 

@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { audio } from '../utils/audio';
 
-export default function Taskbar({ 
-  windows, 
-  onToggleWindow, 
-  onFocusWindow, 
-  crtEnabled, 
-  onToggleCrt, 
+export default function Taskbar({
+  windows,
+  onToggleWindow,
+  onFocusWindow,
+  crtEnabled,
+  onToggleCrt,
+  muted,
+  onToggleMute,
   onShutdown,
-  onResetAll 
+  onResetAll
 }) {
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [timeStr, setTimeStr] = useState('');
@@ -180,6 +182,20 @@ export default function Taskbar({
           onClick={onToggleCrt}
         >
           📺 CRT: {crtEnabled ? 'ON' : 'OFF'}
+        </button>
+        {/* Sound mute toggle */}
+        <button
+          className="win95-btn"
+          aria-label={muted ? 'Unmute sounds' : 'Mute sounds'}
+          style={{
+            fontSize: '10px',
+            padding: '1px 4px',
+            height: '20px',
+            borderStyle: muted ? 'inset' : 'outset'
+          }}
+          onClick={onToggleMute}
+        >
+          {muted ? '🔇' : '🔊'}
         </button>
         <span style={{ fontFamily: 'var(--font-mono)' }}>{timeStr}</span>
       </div>

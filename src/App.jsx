@@ -30,12 +30,16 @@ const DEFAULT_SETTINGS = {
   provider: 'gemini',
   apiKey: '',
   model: 'gemini-2.5-flash',
-  customUrl: ''
+  customUrl: '',
+  persistApiKey: true
 };
 
 export default function App() {
-  // 1. Desktop & CRT State
-  const [crtEnabled, setCrtEnabled] = useState(true);
+  // 1. Desktop & CRT State (CRT and mute preferences persist across visits)
+  const [crtEnabled, setCrtEnabled] = useState(() =>
+    storage.read('crt', true, (v) => typeof v === 'boolean')
+  );
+  const [muted, setMuted] = useState(() => audio.isMuted());
   const [isShutdown, setIsShutdown] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState(null);
 
@@ -86,7 +90,11 @@ export default function App() {
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
-    storage.write('settings', newSettings);
+    // Session-only key option (D7): the key lives in React state either way,
+    // but is stripped from persistence when the user opts out
+    storage.write('settings', newSettings.persistApiKey
+      ? newSettings
+      : { ...newSettings, apiKey: '' });
 
     // Clear data cache if username changed to force re-fetch
     if (newSettings.username !== settings.username) {
@@ -316,6 +324,14 @@ export default function App() {
             onToggleCrt={() => {
               audio.playClick();
               setCrtEnabled(!crtEnabled);
+              storage.write('crt', !crtEnabled);
+            }}
+            muted={muted}
+            onToggleMute={() => {
+              const next = !muted;
+              audio.setMuted(next);
+              setMuted(next);
+              if (!next) audio.playClick(); // audible confirmation on unmute
             }}
             onShutdown={() => {
               audio.playError();

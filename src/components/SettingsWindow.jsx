@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { audio } from '../utils/audio';
 import { aiRouter } from '../services/aiRouter';
+import { fetchStarredRepos } from '../services/github';
 
 export default function SettingsWindow({ settings, onSave, onClose }) {
   const [username, setUsername] = useState(settings.username || '');
@@ -10,9 +11,11 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
   const [model, setModel] = useState(settings.model || 'gemini-2.5-flash');
   const [customUrl, setCustomUrl] = useState(settings.customUrl || '');
+  const [persistApiKey, setPersistApiKey] = useState(settings.persistApiKey !== false);
 
   // Testing connection state
   const [testStatus, setTestStatus] = useState({ state: 'idle', message: '' });
+  const [ghStatus, setGhStatus] = useState({ state: 'idle', message: '' });
 
   // Re-sync the form when the settings object changes from outside (e.g.
   // Reset All). Render-time adjustment per React docs — avoids the
@@ -27,6 +30,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
     setApiKey(settings.apiKey || '');
     setModel(settings.model || 'gemini-2.5-flash');
     setCustomUrl(settings.customUrl || '');
+    setPersistApiKey(settings.persistApiKey !== false);
   }
 
   const handleSave = (e) => {
@@ -39,8 +43,32 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
       provider,
       apiKey,
       model,
-      customUrl
+      customUrl,
+      persistApiKey
     });
+  };
+
+  const handleVerifyGitHub = async () => {
+    if (!username) {
+      setGhStatus({ state: 'error', message: 'Enter a GitHub username first!' });
+      audio.playError();
+      return;
+    }
+    setGhStatus({ state: 'loading', message: 'Checking GitHub account...' });
+    audio.playClick();
+    try {
+      const repos = await fetchStarredRepos(username, githubToken, 1);
+      setGhStatus({
+        state: 'success',
+        message: repos.length > 0
+          ? `Account found — stars are accessible.`
+          : 'Account found, but it has no public stars yet.'
+      });
+      audio.playSuccess();
+    } catch (err) {
+      setGhStatus({ state: 'error', message: err.message });
+      audio.playError();
+    }
   };
 
   const handleTestConnection = async () => {
@@ -105,6 +133,26 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
           </span>
         </div>
         <div className="field-group">
+          <button
+            type="button"
+            className="win95-btn"
+            onClick={handleVerifyGitHub}
+            disabled={ghStatus.state === 'loading'}
+            style={{ padding: '4px 10px' }}
+          >
+            {ghStatus.state === 'loading' ? 'Verifying...' : '✓ Verify GitHub Account'}
+          </button>
+          {ghStatus.state !== 'idle' && ghStatus.state !== 'loading' && (
+            <span style={{
+              fontSize: '10px',
+              marginLeft: '6px',
+              color: ghStatus.state === 'success' ? '#006600' : '#cc0000'
+            }}>
+              {ghStatus.state === 'success' ? '✓ ' : '❌ '}{ghStatus.message}
+            </span>
+          )}
+        </div>
+        <div className="field-group">
           <label htmlFor="gh-limit">Max Stars to Visualize:</label>
           <select
             id="gh-limit"
@@ -128,7 +176,10 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
       {/* Universal AI Router Config */}
       <fieldset className="win95-raised" style={{ padding: '10px', margin: '5px 0' }}>
         <legend style={{ padding: '0 5px', fontSize: '12px', fontWeight: 'bold' }}>Universal AI Settings</legend>
-        
+        <span style={{ fontSize: '10px', color: '#666', display: 'block', marginBottom: '6px' }}>
+          Optional — without an AI key you still get a working map, grouped by programming language (no AI categories or semantic links).
+        </span>
+
         <div className="field-group">
           <label htmlFor="ai-provider">AI Provider:</label>
           <select
@@ -163,6 +214,14 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#444', marginTop: '4px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={persistApiKey}
+              onChange={(e) => setPersistApiKey(e.target.checked)}
+            />
+            Remember API key on this device (uncheck to keep it for this session only)
+          </label>
         </div>
 
         <div className="field-group">
