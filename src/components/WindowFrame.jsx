@@ -17,7 +17,7 @@ export default function WindowFrame({
   const [drag, setDrag] = useState(null); // { mode: 'move'|'resize' }
   const gestureRef = useRef(null); // { startX, startY, baseX, baseY, baseW, baseH }
 
-  const beginGesture = (mode) => (e) => {
+  const beginGesture = (mode, e) => {
     if (win.isMaximized) return;
     if (mode === 'move' && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) {
       return;
@@ -35,6 +35,8 @@ export default function WindowFrame({
     };
     setDrag({ mode });
   };
+  const beginMove = (e) => beginGesture('move', e);
+  const beginResize = (e) => beginGesture('resize', e);
 
   useEffect(() => {
     if (!drag) return;
@@ -99,8 +101,8 @@ export default function WindowFrame({
     >
       <div
         className={`win95-title-bar ${isActive ? 'active' : 'inactive'}`}
-        onMouseDown={beginGesture('move')}
-        onTouchStart={beginGesture('move')}
+        onMouseDown={beginMove}
+        onTouchStart={beginMove}
         onDoubleClick={() => {
           audio.playClick();
           onToggleMaximize();
@@ -144,8 +146,8 @@ export default function WindowFrame({
         <div
           className="win95-resize-grip"
           aria-hidden="true"
-          onMouseDown={beginGesture('resize')}
-          onTouchStart={beginGesture('resize')}
+          onMouseDown={beginResize}
+          onTouchStart={beginResize}
         />
       )}
     </div>
