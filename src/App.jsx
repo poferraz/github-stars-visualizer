@@ -10,6 +10,17 @@ import { audio } from './utils/audio';
 import { fetchStarredRepos } from './services/github';
 import { analyzeStars } from './services/aiAnalysis';
 import { buildGraphData } from './utils/graphBuilder';
+import { storage } from './services/storage';
+
+const DEFAULT_SETTINGS = {
+  username: '',
+  githubToken: '',
+  maxStars: 50,
+  provider: 'gemini',
+  apiKey: '',
+  model: 'gemini-2.5-flash',
+  customUrl: ''
+};
 
 export default function App() {
   // 1. Desktop & CRT State
@@ -17,41 +28,20 @@ export default function App() {
   const [isShutdown, setIsShutdown] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState(null);
 
-  // 2. Settings State
-  const [settings, setSettings] = useState(() => {
-    try {
-      const stored = localStorage.getItem('gitstars_settings');
-      return stored ? JSON.parse(stored) : {
-        username: '',
-        githubToken: '',
-        maxStars: 50,
-        provider: 'gemini',
-        apiKey: '',
-        model: 'gemini-2.5-flash',
-        customUrl: ''
-      };
-    } catch {
-      return { username: '', githubToken: '', maxStars: 50, provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash', customUrl: '' };
-    }
-  });
+  // 2. Settings State — merged over defaults so new fields gain sane values
+  // when older persisted shapes are loaded
+  const [settings, setSettings] = useState(() => ({
+    ...DEFAULT_SETTINGS,
+    ...storage.read('settings', {}, (v) => v && typeof v === 'object' && !Array.isArray(v))
+  }));
 
   // 3. Cache & Computed Data
-  const [repositories, setRepositories] = useState(() => {
-    try {
-      const stored = localStorage.getItem('gitstars_cached_repos');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [aiAnalysis, setAiAnalysis] = useState(() => {
-    try {
-      const stored = localStorage.getItem('gitstars_cached_ai');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [repositories, setRepositories] = useState(() =>
+    storage.read('repos', [], Array.isArray)
+  );
+  const [aiAnalysis, setAiAnalysis] = useState(() =>
+    storage.read('ai', {}, (v) => v && typeof v === 'object' && !Array.isArray(v))
+  );
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [minStars, setMinStars] = useState(0);
 
@@ -215,12 +205,12 @@ export default function App() {
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('gitstars_settings', JSON.stringify(newSettings));
-    
+    storage.write('settings', newSettings);
+
     // Clear data cache if username changed to force re-fetch
     if (newSettings.username !== settings.username) {
-      localStorage.removeItem('gitstars_cached_repos');
-      localStorage.removeItem('gitstars_cached_ai');
+      storage.remove('repos');
+      storage.remove('ai');
       setRepositories([]);
       setAiAnalysis({});
       setSelectedLanguages([]);
@@ -234,16 +224,9 @@ export default function App() {
   };
 
   const handleResetAll = () => {
-    localStorage.clear();
-    setSettings({
-      username: '',
-      githubToken: '',
-      maxStars: 50,
-      provider: 'gemini',
-      apiKey: '',
-      model: 'gemini-2.5-flash',
-      customUrl: ''
-    });
+    // Scoped reset: clears only gitstars-owned keys, not the whole origin
+    storage.resetApp();
+    setSettings({ ...DEFAULT_SETTINGS });
     setRepositories([]);
     setAiAnalysis({});
     setSelectedLanguages([]);
@@ -319,8 +302,8 @@ export default function App() {
         await audio.playFloppySeek(800);
 
         // Save cache
-        localStorage.setItem('gitstars_cached_repos', JSON.stringify(fetchedRepos));
-        localStorage.setItem('gitstars_cached_ai', JSON.stringify(analysis));
+        storage.write('repos', fetchedRepos);
+        storage.write('ai', analysis);
         
         setRepositories(fetchedRepos);
         setAiAnalysis(analysis);
@@ -329,8 +312,8 @@ export default function App() {
       } else {
         // Fallback if no AI key configured
         addLog('⚠️ WARNING: NO AI API KEY PROVIDED. GENERATING DEFAULT GRAPH (NO SEMANTIC CONNECTIONS).', 'warning');
-        localStorage.setItem('gitstars_cached_repos', JSON.stringify(fetchedRepos));
-        localStorage.setItem('gitstars_cached_ai', JSON.stringify({}));
+        storage.write('repos', fetchedRepos);
+        storage.write('ai', {});
         
         setRepositories(fetchedRepos);
         setAiAnalysis({});
