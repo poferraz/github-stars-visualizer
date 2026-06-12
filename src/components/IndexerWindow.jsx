@@ -13,7 +13,7 @@ export default function IndexerWindow({ progress, logs, onClose }) {
         left: '50%',
         top: '50%',
         transform: 'translate(-50%, -50%)',
-        width: '460px',
+        width: 'min(460px, 94vw)',
         zIndex: 99999,
         boxShadow: '10px 10px 30px rgba(0,0,0,0.6)'
       }}

@@ -12,13 +12,14 @@ export default function WindowFrame({
   onMove,
   onResize,
   onToggleMaximize,
+  kiosk = false, // mobile: full-screen, no drag/resize/maximize
   children
 }) {
   const [drag, setDrag] = useState(null); // { mode: 'move'|'resize' }
   const gestureRef = useRef(null); // { startX, startY, baseX, baseY, baseW, baseH }
 
   const beginGesture = (mode, e) => {
-    if (win.isMaximized) return;
+    if (win.isMaximized || kiosk) return;
     if (mode === 'move' && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) {
       return;
     }
@@ -71,7 +72,7 @@ export default function WindowFrame({
 
   if (!win.isOpen || win.isMinimized) return null;
 
-  const windowStyle = win.isMaximized
+  const windowStyle = (win.isMaximized || kiosk)
     ? {
         left: 0,
         top: 0,
@@ -113,22 +114,23 @@ export default function WindowFrame({
           <span style={{ fontFamily: 'var(--font-os)', fontSize: '11px', letterSpacing: '0px' }}>{win.title}</span>
         </div>
         <div className="win95-title-controls" style={{ display: 'flex', gap: '2px' }}>
+          {!kiosk && (
+            <button
+              className="win95-btn win95-title-btn"
+              aria-label={win.isMaximized ? 'Restore window' : 'Maximize window'}
+              onClick={(e) => {
+                e.stopPropagation();
+                audio.playClick();
+                onToggleMaximize();
+              }}
+            >
+              {win.isMaximized ? '❐' : '⬜'}
+            </button>
+          )}
           <button
-            className="win95-btn"
-            aria-label={win.isMaximized ? 'Restore window' : 'Maximize window'}
-            style={{ width: '16px', height: '14px', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              audio.playClick();
-              onToggleMaximize();
-            }}
-          >
-            {win.isMaximized ? '❐' : '⬜'}
-          </button>
-          <button
-            className="win95-btn win95-btn-close"
+            className="win95-btn win95-btn-close win95-title-btn"
             aria-label="Close window"
-            style={{ width: '16px', height: '14px', fontSize: '9px', fontWeight: 'bold' }}
+            style={{ fontWeight: 'bold' }}
             onClick={(e) => {
               e.stopPropagation();
               audio.playClick();
@@ -142,7 +144,7 @@ export default function WindowFrame({
       <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         {children}
       </div>
-      {!win.isMaximized && (
+      {!win.isMaximized && !kiosk && (
         <div
           className="win95-resize-grip"
           aria-hidden="true"

@@ -469,6 +469,33 @@ label {
   gap: 6px;
 }
 
+/* Title-bar control buttons: tiny by tradition, comfortable on touch */
+.win95-title-btn {
+  width: 16px;
+  height: 14px;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.win95-title-bar,
+.win95-resize-grip {
+  touch-action: none; /* window drag/resize must not scroll the page */
+}
+
+@media (pointer: coarse) {
+  .win95-title-btn {
+    width: 32px;
+    height: 26px;
+    font-size: 12px;
+  }
+  .win95-title-bar {
+    height: 30px;
+  }
+}
+
 /* Keyboard focus on form fields: dotted retro ring (buttons already have
    their own focus-visible treatment) */
 input:focus-visible,

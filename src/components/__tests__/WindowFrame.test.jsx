@@ -93,6 +93,19 @@ describe('WindowFrame (controlled)', () => {
     fireEvent.mouseUp(window);
   });
 
+  it('kiosk mode renders full-screen with no resize grip or maximize button', () => {
+    const { props } = renderFrame(makeWin(), { kiosk: true });
+    const dialog = screen.getByRole('dialog', { name: 'Help Manual' });
+    expect(dialog.style.width).toBe('100%');
+    expect(document.querySelector('.win95-resize-grip')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Maximize window' })).toBeNull();
+
+    const titleBar = screen.getByText('Help Manual').closest('.win95-title-bar');
+    fireEvent.mouseDown(titleBar, { clientX: 200, clientY: 150 });
+    fireEvent.mouseMove(window, { clientX: 230, clientY: 170 });
+    expect(props.onMove).not.toHaveBeenCalled();
+  });
+
   it('maximized windows ignore drag and hide the resize grip', () => {
     const { props } = renderFrame(makeWin({ isMaximized: true }));
     expect(document.querySelector('.win95-resize-grip')).toBeNull();

@@ -11,6 +11,7 @@ import { buildGraphData } from './utils/graphBuilder';
 import { storage } from './services/storage';
 import { useWindowManager } from './os/useWindowManager';
 import { useIndexing } from './state/useIndexing';
+import { useIsMobile } from './os/useIsMobile';
 import IndexerWindow from './components/IndexerWindow';
 
 // Window chrome definitions: geometry defaults; live state (position, size,
@@ -80,6 +81,8 @@ export default function App() {
   // 4. Window manager: position/size/stacking/visibility in one reducer
   const wm = useWindowManager(WINDOW_DEFS);
   const { windows } = wm;
+  // Kiosk mode (<768px): every window full-screen, taskbar tabs navigate
+  const isMobile = useIsMobile();
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
@@ -214,6 +217,7 @@ export default function App() {
 
             {/* Draggable Help Window */}
             <WindowFrame
+              kiosk={isMobile}
               win={windows.help}
               isActive={windows.help.isActive}
               zIndex={windows.help.zIndex}
@@ -228,6 +232,7 @@ export default function App() {
 
             {/* Draggable Settings Window */}
             <WindowFrame
+              kiosk={isMobile}
               win={windows.settings}
               isActive={windows.settings.isActive}
               zIndex={windows.settings.zIndex}
@@ -255,6 +260,7 @@ export default function App() {
 
             {/* Draggable Mind Map Graph Window */}
             <WindowFrame
+              kiosk={isMobile}
               win={windows.graph}
               isActive={windows.graph.isActive}
               zIndex={windows.graph.zIndex}
@@ -280,6 +286,7 @@ export default function App() {
 
             {/* Draggable Properties Window */}
             <WindowFrame
+              kiosk={isMobile}
               win={windows.detail}
               isActive={windows.detail.isActive}
               zIndex={windows.detail.zIndex}
