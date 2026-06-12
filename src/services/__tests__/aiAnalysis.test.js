@@ -13,9 +13,10 @@ describe('AI Stars Analysis Coordinator', () => {
     vi.clearAllMocks();
   });
 
-  it('should return empty object if no repositories are provided', async () => {
+  it('should return an empty analysis if no repositories are provided', async () => {
     const result = await analyzeStars({ repositories: [] });
-    expect(result).toEqual({});
+    expect(result.analysis).toEqual({});
+    expect(result.meta).toEqual({ total: 0, analyzed: 0, batches: 0, failedBatches: 0 });
     expect(aiRouter.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -37,8 +38,8 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('owner/repo');
-    expect(result['owner/repo'].category).toBe('Web Dev');
+    expect(result.analysis).toHaveProperty('owner/repo');
+    expect(result.analysis['owner/repo'].category).toBe('Web Dev');
   });
 
   it('should successfully extract JSON wrapped in markdown codeblocks', async () => {
@@ -63,8 +64,8 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('owner/repo');
-    expect(result['owner/repo'].category).toBe('Web Dev');
+    expect(result.analysis).toHaveProperty('owner/repo');
+    expect(result.analysis['owner/repo'].category).toBe('Web Dev');
   });
 
   it('should successfully parse JSON containing trailing commas and conversational text', async () => {
@@ -87,8 +88,8 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('owner/repo');
-    expect(result['owner/repo'].category).toBe('Web Dev');
+    expect(result.analysis).toHaveProperty('owner/repo');
+    expect(result.analysis['owner/repo'].category).toBe('Web Dev');
   });
 
   it('should call onProgress callback with correct stages', async () => {
@@ -137,10 +138,10 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('owner/repo');
-    expect(result['owner/repo'].category).toBe('JavaScript');
-    expect(result['owner/repo'].summary).toBe('desc');
-    expect(result['owner/repo'].related).toEqual([]);
+    expect(result.analysis).toHaveProperty('owner/repo');
+    expect(result.analysis['owner/repo'].category).toBe('JavaScript');
+    expect(result.analysis['owner/repo'].summary).toBe('desc');
+    expect(result.analysis['owner/repo'].related).toEqual([]);
   });
 
   it('should recover using heuristic parsing when JSON has unescaped newlines and invalid relations', async () => {
@@ -172,13 +173,13 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('owner/repo1');
-    expect(result['owner/repo1'].category).toBe('Frontend Frameworks');
-    expect(result['owner/repo1'].related).toEqual(['owner/repo2']);
+    expect(result.analysis).toHaveProperty('owner/repo1');
+    expect(result.analysis['owner/repo1'].category).toBe('Frontend Frameworks');
+    expect(result.analysis['owner/repo1'].related).toEqual(['owner/repo2']);
     
-    expect(result).toHaveProperty('owner/repo2');
+    expect(result.analysis).toHaveProperty('owner/repo2');
     // Ensure nonexistent relation got filtered out to prevent crash
-    expect(result['owner/repo2'].related).toEqual([]);
+    expect(result.analysis['owner/repo2'].related).toEqual([]);
   });
 
   it('should handle case-insensitive lookups and normalize related repos casing in aiAnalysis', async () => {
@@ -208,10 +209,10 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('Owner/Repo1');
-    expect(result['Owner/Repo1'].category).toBe('Frontend Tools');
+    expect(result.analysis).toHaveProperty('Owner/Repo1');
+    expect(result.analysis['Owner/Repo1'].category).toBe('Frontend Tools');
     // Casing of the related repo should be normalized to the original 'Owner/Repo2'
-    expect(result['Owner/Repo1'].related).toEqual(['Owner/Repo2']);
+    expect(result.analysis['Owner/Repo1'].related).toEqual(['Owner/Repo2']);
   });
 
   it('should recover and normalize casing using heuristic parsing when JSON is malformed and has mismatched casing', async () => {
@@ -243,9 +244,116 @@ describe('AI Stars Analysis Coordinator', () => {
       model: 'model'
     });
 
-    expect(result).toHaveProperty('Owner/Repo1');
-    expect(result['Owner/Repo1'].category).toBe('Frontend Frameworks');
+    expect(result.analysis).toHaveProperty('Owner/Repo1');
+    expect(result.analysis['Owner/Repo1'].category).toBe('Frontend Frameworks');
     // Casing should be normalized using heuristicParse
-    expect(result['Owner/Repo1'].related).toEqual(['Owner/Repo2']);
+    expect(result.analysis['Owner/Repo1'].related).toEqual(['Owner/Repo2']);
+  });
+
+  describe('Batched analysis', () => {
+    const makeRepos = (count) =>
+      Array.from({ length: count }, (_, i) => ({
+        full_name: `owner/repo-${i}`,
+        description: `desc ${i}`,
+        language: 'JS'
+      }));
+
+    const batchResponse = (repos, category) =>
+      JSON.stringify(
+        Object.fromEntries(
+          repos.map(r => [r.full_name, { category, summary: 's', related: [] }])
+        )
+      );
+
+    it('splits repos into batches and merges the results', async () => {
+      const repos = makeRepos(4);
+      aiRouter.sendMessage
+        .mockResolvedValueOnce(batchResponse(repos.slice(0, 2), 'Cat A'))
+        .mockResolvedValueOnce(batchResponse(repos.slice(2, 4), 'Cat B'));
+
+      const result = await analyzeStars({
+        repositories: repos,
+        provider: 'gemini',
+        apiKey: 'key',
+        model: 'model',
+        batchSize: 2,
+        retryDelayMs: 0
+      });
+
+      expect(aiRouter.sendMessage).toHaveBeenCalledTimes(2);
+      expect(result.analysis['owner/repo-0'].category).toBe('Cat A');
+      expect(result.analysis['owner/repo-3'].category).toBe('Cat B');
+      expect(result.meta).toEqual({ total: 4, analyzed: 4, batches: 2, failedBatches: 0 });
+    });
+
+    it('nudges later batches to reuse categories from earlier ones', async () => {
+      const repos = makeRepos(4);
+      aiRouter.sendMessage
+        .mockResolvedValueOnce(batchResponse(repos.slice(0, 2), 'Frontend Tools'))
+        .mockResolvedValueOnce(batchResponse(repos.slice(2, 4), 'Frontend Tools'));
+
+      await analyzeStars({
+        repositories: repos,
+        provider: 'gemini',
+        apiKey: 'key',
+        model: 'model',
+        batchSize: 2,
+        retryDelayMs: 0
+      });
+
+      const firstPrompt = aiRouter.sendMessage.mock.calls[0][0].prompt;
+      const secondPrompt = aiRouter.sendMessage.mock.calls[1][0].prompt;
+      expect(firstPrompt).not.toContain('REUSE these existing category names');
+      expect(secondPrompt).toContain('REUSE these existing category names');
+      expect(secondPrompt).toContain('Frontend Tools');
+    });
+
+    it('retries a failed batch once before giving up', async () => {
+      const repos = makeRepos(2);
+      aiRouter.sendMessage
+        .mockRejectedValueOnce(new Error('flaky network'))
+        .mockResolvedValueOnce(batchResponse(repos, 'Cat A'));
+
+      const result = await analyzeStars({
+        repositories: repos,
+        provider: 'gemini',
+        apiKey: 'key',
+        model: 'model',
+        retryDelayMs: 0
+      });
+
+      expect(aiRouter.sendMessage).toHaveBeenCalledTimes(2);
+      expect(result.meta.failedBatches).toBe(0);
+      expect(result.analysis['owner/repo-0'].category).toBe('Cat A');
+    });
+
+    it('reports a partial result when one batch fails both attempts', async () => {
+      const repos = makeRepos(4);
+      aiRouter.sendMessage
+        .mockResolvedValueOnce(batchResponse(repos.slice(0, 2), 'Cat A'))
+        .mockRejectedValueOnce(new Error('boom'))
+        .mockRejectedValueOnce(new Error('boom again'));
+
+      const onProgress = vi.fn();
+      const result = await analyzeStars({
+        repositories: repos,
+        provider: 'gemini',
+        apiKey: 'key',
+        model: 'model',
+        batchSize: 2,
+        retryDelayMs: 0,
+        onProgress
+      });
+
+      expect(result.meta).toEqual({ total: 4, analyzed: 2, batches: 2, failedBatches: 1 });
+      // Failed batch falls back to language defaults — never silently missing
+      expect(result.analysis['owner/repo-2']).toEqual({
+        category: 'JS',
+        summary: 'desc 2',
+        related: []
+      });
+      const warnings = onProgress.mock.calls.filter(c => c[1] === 'warning').map(c => c[0]);
+      expect(warnings.some(w => w.includes('Batch 2/2 failed after retry'))).toBe(true);
+    });
   });
 });

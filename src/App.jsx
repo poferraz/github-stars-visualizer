@@ -283,7 +283,7 @@ export default function App() {
         addLog(`🤖 CONNECTING TO AI ROUTER (${settings.provider.toUpperCase()})...`, 'info');
         addLog('⏳ EXECUTING GRAPH MAP COMPUTATION PROMPT. PLEASE STAND BY...', 'info');
         
-        const analysis = await analyzeStars({
+        const { analysis, meta } = await analyzeStars({
           repositories: fetchedRepos,
           provider: settings.provider,
           apiKey: settings.apiKey,
@@ -297,17 +297,25 @@ export default function App() {
           }
         });
 
-        addLog('✓ SEMANTIC CONNECTIONS FORGED BY AI ARCHIVIST.', 'success');
+        // Honest reporting: a partial or failed AI run must not look like success
+        if (meta.analyzed === 0) {
+          addLog('❌ AI ANALYSIS FAILED FOR ALL BATCHES. MAP USES LANGUAGE GROUPS ONLY.', 'error');
+        } else if (meta.failedBatches > 0 || meta.analyzed < meta.total) {
+          addLog(`⚠️ PARTIAL AI MAP: ${meta.analyzed}/${meta.total} REPOS CATEGORIZED (${meta.failedBatches} BATCH(ES) FAILED). REST FALL BACK TO LANGUAGE GROUPS.`, 'warning');
+        } else {
+          addLog('✓ SEMANTIC CONNECTIONS FORGED BY AI ARCHIVIST.', 'success');
+        }
         setInstallProgress(85);
         await audio.playFloppySeek(800);
 
-        // Save cache
+        // Save cache (+ coverage metadata so future UI can show map provenance)
         storage.write('repos', fetchedRepos);
         storage.write('ai', analysis);
-        
+        storage.write('aiMeta', { ...meta, analyzedAt: Date.now() });
+
         setRepositories(fetchedRepos);
         setAiAnalysis(analysis);
-        
+
         addLog('✓ GRAPH DATA GENERATED SUCCESSFULLY.', 'success');
       } else {
         // Fallback if no AI key configured
