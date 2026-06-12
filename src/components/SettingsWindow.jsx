@@ -144,7 +144,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             <option value="openrouter">OpenRouter (Access Free Models)</option>
             <option value="openai">OpenAI (GPT-4o-mini)</option>
             <option value="groq">Groq (Llama 3)</option>
-            <option value="custom">Custom API Proxy Endpoint</option>
+            <option value="custom">Custom Endpoint (OpenAI-compatible)</option>
           </select>
         </div>
 
@@ -181,10 +181,14 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
               type="text"
               className="layout-flex"
               style={{ width: '100%' }}
-              placeholder="e.g. https://ollama.com/v1/chat/completions"
+              placeholder="e.g. http://localhost:11434/v1/chat/completions"
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
             />
+            <span style={{ fontSize: '10px', color: '#666', marginTop: '2px', display: 'block' }}>
+              Called directly from your browser (no proxy). For local Ollama, start it with
+              OLLAMA_ORIGINS=&quot;*&quot; (or this site&apos;s origin) so CORS allows the request. API key optional.
+            </span>
           </div>
         )}
 

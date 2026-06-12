@@ -71,12 +71,17 @@ describe('Universal AI Router', () => {
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=gemini-fake-key'),
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'x-goog-api-key': 'gemini-fake-key'
+        })
       })
     );
+    // Key must never appear in the URL (URLs get logged by proxies/CDNs)
+    expect(mockFetch.mock.calls[0][0]).not.toContain('gemini-fake-key');
     expect(rateLimiter.increment).toHaveBeenCalledTimes(1);
     expect(response).toBe('{"categories": []}');
   });
@@ -126,17 +131,64 @@ describe('Universal AI Router', () => {
     ).rejects.toThrow('API rate limit reached (HTTP 429).');
   });
 
-  it('should successfully make a request to the custom provider via the proxy', async () => {
-    vi.stubGlobal('window', {
-      location: {
-        origin: 'https://git-starmap.vercel.app'
-      }
-    });
-
+  it('should make a request to OpenAI with Bearer auth and json response format', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: 'Custom proxy response' } }]
+        choices: [{ message: { content: 'OpenAI response' } }]
+      })
+    });
+
+    const response = await aiRouter.sendMessage({
+      provider: 'openai',
+      apiKey: 'openai-fake-key',
+      model: 'gpt-4o-mini',
+      prompt: 'Summarize these stars'
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/chat/completions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Authorization': 'Bearer openai-fake-key' })
+      })
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.model).toBe('gpt-4o-mini');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    expect(response).toBe('OpenAI response');
+  });
+
+  it('should make a request to Groq with Bearer auth', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'Groq response' } }]
+      })
+    });
+
+    const response = await aiRouter.sendMessage({
+      provider: 'groq',
+      apiKey: 'groq-fake-key',
+      model: 'llama3-8b-8192',
+      prompt: 'Summarize these stars'
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.groq.com/openai/v1/chat/completions',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Authorization': 'Bearer groq-fake-key' })
+      })
+    );
+    expect(response).toBe('Groq response');
+  });
+
+  it('should call the custom endpoint directly (no proxy)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'Custom response' } }]
       })
     });
 
@@ -145,26 +197,67 @@ describe('Universal AI Router', () => {
       apiKey: 'custom-fake-key',
       model: 'gpt-oss:20b',
       prompt: 'Summarize these stars',
-      customUrl: 'https://ollama.com/v1/chat/completions'
+      customUrl: 'http://localhost:11434/v1/chat/completions'
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://git-starmap.vercel.app/api/ai-proxy',
+      'http://localhost:11434/v1/chat/completions',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json'
-        }),
+        headers: expect.objectContaining({ 'Authorization': 'Bearer custom-fake-key' }),
         body: JSON.stringify({
-          targetUrl: 'https://ollama.com/v1/chat/completions',
-          apiKey: 'custom-fake-key',
           model: 'gpt-oss:20b',
-          prompt: 'Summarize these stars'
+          messages: [{ role: 'user', content: 'Summarize these stars' }]
         })
       })
     );
-    expect(response).toBe('Custom proxy response');
+    expect(response).toBe('Custom response');
+  });
 
-    vi.unstubAllGlobals();
+  it('should allow a keyless custom endpoint (e.g. local Ollama) and omit auth', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'Ollama response' } }]
+      })
+    });
+
+    const response = await aiRouter.sendMessage({
+      provider: 'custom',
+      apiKey: '',
+      model: 'llama3',
+      prompt: 'test',
+      customUrl: 'http://localhost:11434/v1/chat/completions'
+    });
+
+    expect(mockFetch.mock.calls[0][1].headers['Authorization']).toBeUndefined();
+    expect(response).toBe('Ollama response');
+  });
+
+  it('should reject the custom provider without an API Base URL', async () => {
+    await expect(
+      aiRouter.sendMessage({
+        provider: 'custom',
+        apiKey: 'k',
+        model: 'm',
+        prompt: 'test',
+        customUrl: ''
+      })
+    ).rejects.toThrow('Custom provider requires an API Base URL');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should wrap network failures with context', async () => {
+    mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await expect(
+      aiRouter.sendMessage({
+        provider: 'gemini',
+        apiKey: 'fake-key',
+        model: 'gemini-2.5-flash',
+        prompt: 'test'
+      })
+    ).rejects.toThrow('Network error calling AI service: Failed to fetch');
+    expect(rateLimiter.increment).not.toHaveBeenCalled();
   });
 });

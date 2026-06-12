@@ -2,7 +2,8 @@ import { rateLimiter } from './rateLimiter';
 
 export const aiRouter = {
   async sendMessage({ provider, apiKey, model, prompt, customUrl = '' }) {
-    if (!apiKey) {
+    // Local endpoints (e.g. Ollama) don't require a key
+    if (!apiKey && provider !== 'custom') {
       throw new Error('API Key is required.');
     }
 
@@ -18,7 +19,10 @@ export const aiRouter = {
     switch (provider) {
       case 'gemini': {
         const selectedModel = model || 'gemini-2.5-flash';
-        url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+        // Key travels in a header, never in the URL: URLs are routinely
+        // logged by proxies and CDNs, headers are not
+        headers['x-goog-api-key'] = apiKey;
         body = {
           contents: [
             {
@@ -64,12 +68,19 @@ export const aiRouter = {
         break;
       }
       case 'custom': {
-        url = typeof window !== 'undefined' ? `${window.location.origin}/api/ai-proxy` : '/api/ai-proxy';
+        // Direct call to the user's OpenAI-compatible endpoint (zero-backend
+        // model: no proxy). CORS is the endpoint's responsibility — for local
+        // Ollama, set OLLAMA_ORIGINS to allow this app's origin.
+        if (!customUrl) {
+          throw new Error('Custom provider requires an API Base URL in Settings.');
+        }
+        url = customUrl;
+        if (apiKey) {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
         body = {
-          targetUrl: customUrl,
-          apiKey,
           model,
-          prompt
+          messages: [{ role: 'user', content: prompt }]
         };
         break;
       }
