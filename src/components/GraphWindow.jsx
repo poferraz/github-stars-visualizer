@@ -9,18 +9,21 @@ function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-export default function GraphWindow({ 
-  graphData, 
-  onSelectNode, 
-  selectedNodeId, 
-  searchQuery,
+export default function GraphWindow({
+  graphData,
+  onSelectNode,
+  selectedNodeId,
   selectedLanguages = [],
   setSelectedLanguages,
   minStars = 0,
   setMinStars,
   allLanguages = [],
-  maxStarsLimit = 100
+  maxStarsLimit = 100,
+  onResync
 }) {
+  // Search lives here — the graph is its only consumer, so keystrokes no
+  // longer re-render the whole app tree
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef(null);
   const graphInstanceRef = useRef(null);
   const [showSemantic, setShowSemantic] = useState(true);
@@ -367,6 +370,45 @@ export default function GraphWindow({
   };
 
   return (
+    <div className="layout-col" style={{ height: '100%' }}>
+      {/* Window header: search highlight + re-sync */}
+      <div className="layout-row align-center justify-between" style={{ paddingBottom: '6px', borderBottom: '1px solid #777' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <label htmlFor="search-stars" style={{ margin: 0 }}>🔍 Highlight Star:</label>
+          <input
+            id="search-stars"
+            type="text"
+            placeholder="Type name (e.g. react)"
+            style={{ width: '160px', height: '22px', fontSize: '12px' }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="win95-btn"
+              style={{ height: '22px', padding: '0 4px', fontSize: '10px' }}
+              onClick={() => setSearchQuery('')}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {onResync && (
+          <button
+            type="button"
+            className="win95-btn"
+            onClick={() => {
+              audio.playClick();
+              onResync();
+            }}
+          >
+            🔄 Re-Sync Stars
+          </button>
+        )}
+      </div>
+
+      <div className="layout-flex win95-recessed" style={{ overflow: 'hidden' }}>
     <div className="graph-container">
       {/* Floating retro button controls on the graph */}
       <div className="graph-controls">
@@ -577,6 +619,8 @@ export default function GraphWindow({
             </>)}
           </div>
         )}
+      </div>
+    </div>
       </div>
     </div>
   );
