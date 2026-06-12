@@ -1,5 +1,5 @@
 export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {}) {
-  const { languages, minStars } = filters;
+  const { languages, minStars, rootName } = filters;
 
   const filteredRepositories = repositories.filter((repo) => {
     if (minStars !== undefined && minStars !== null && (repo.stargazers_count || 0) < minStars) {
@@ -34,16 +34,35 @@ export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {})
     categories.add(category);
   });
 
-  // 3. Add category nodes
-  categories.forEach((cat) => {
+  // 3. Add category nodes with a deterministic per-category palette.
+  // Sorted alphabetically so color assignment is stable regardless of repo order.
+  const sortedCategories = [...categories].sort();
+  const categoryColors = new Map(
+    sortedCategories.map((cat, i) => [cat, getCategoryColor(cat, i)])
+  );
+  sortedCategories.forEach((cat) => {
     nodes.push({
       id: cat,
       name: cat,
       type: 'category',
       val: 16, // Category nodes are larger and visually distinct
-      color: '#ff00ff' // Neon magenta for categories
+      color: categoryColors.get(cat)
     });
   });
+
+  // Optional root hub: anchors the radial layout and links every category
+  if (rootName && filteredRepositories.length > 0) {
+    nodes.unshift({
+      id: '__root__',
+      name: rootName,
+      type: 'root',
+      val: 14,
+      color: '#f5f5f5'
+    });
+    sortedCategories.forEach((cat) => {
+      links.push({ source: '__root__', target: cat, type: 'root_link' });
+    });
+  }
 
   // 4. Map lowercased full_name to original full_name for case-insensitive validation/resolution of semantic links
   const filteredRepoMap = new Map(filteredRepositories.map(r => [r.full_name.toLowerCase(), r.full_name]));
@@ -71,7 +90,10 @@ export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {})
       url: repo.html_url,
       type: 'repo',
       val: nodeVal,
-      color: getLanguageColor(repo.language)
+      // Sector coloring: repos inherit their category hue (spider-web look);
+      // language color is kept for the detail view and tooltips.
+      color: categoryColors.get(category),
+      languageColor: getLanguageColor(repo.language)
     });
 
     // Link repo to its category
@@ -105,6 +127,28 @@ export function buildGraphData(repositories = [], aiAnalysis = {}, filters = {})
   });
 
   return { nodes, links };
+}
+
+// Distinct saturated hues that read well on the dark canvas.
+// Uncategorized stays neutral grey so AI-categorized clusters stand out.
+const CATEGORY_PALETTE = [
+  '#ff3df0', // magenta
+  '#00d4ff', // cyan
+  '#ffd23f', // yellow
+  '#7cff4f', // green
+  '#ff7a3d', // orange
+  '#b18cff', // violet
+  '#ff5d73', // red-pink
+  '#3dff9e', // mint
+  '#4f9dff', // blue
+  '#ffb6f9', // pink
+  '#c8ff3d', // lime
+  '#ff9e3d' // amber
+];
+
+function getCategoryColor(category, index) {
+  if (category === 'Uncategorized') return '#9aa0a6';
+  return CATEGORY_PALETTE[index % CATEGORY_PALETTE.length];
 }
 
 // Retro-palette coding colors based on language

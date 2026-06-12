@@ -2,6 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import ForceGraph from 'force-graph';
 import { forceCollide } from 'd3-force-3d';
 import { audio } from '../utils/audio';
+import { applyRadialLayout, clearRadialLayout } from '../utils/radialLayout';
+
+// Minimal HTML escaping for hover tooltips (category names come from the AI)
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
 
 export default function GraphWindow({ 
   graphData, 
@@ -19,10 +25,22 @@ export default function GraphWindow({
   const graphInstanceRef = useRef(null);
   const [showSemantic, setShowSemantic] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [layoutMode, setLayoutMode] = useState('web'); // 'web' (radial) | 'force' (organic)
   const [gravity, setGravity] = useState(-150);
   const [linkDistance, setLinkDistance] = useState(100);
   const [collisionRadius, setCollisionRadius] = useState(20);
   const hasZoomedRef = useRef(false);
+  const prevLayoutModeRef = useRef(layoutMode);
+  const orbitRadiiRef = useRef([]);
+
+  // Mirror layoutMode into a ref so the canvas accessors registered once at
+  // mount (linkColor, particles, onRenderFramePre) see the current mode.
+  // Updated in an effect declared before the data-update effect so ordering
+  // guarantees it is current when graphData is (re)applied.
+  const layoutModeRef = useRef(layoutMode);
+  useEffect(() => {
+    layoutModeRef.current = layoutMode;
+  }, [layoutMode]);
 
   // Store dynamic props in refs for canvas rendering and event handlers
   const searchQueryRef = useRef(searchQuery);
@@ -34,15 +52,16 @@ export default function GraphWindow({
 
   // Node drawing logic used by both initial mount and redraw triggers
   const drawNode = (node, ctx, globalScale) => {
-    const isHighlighted = searchQueryRef.current && 
+    const isHighlighted = searchQueryRef.current &&
       node.name.toLowerCase().includes(searchQueryRef.current.toLowerCase());
     const isSelected = selectedNodeIdRef.current && node.id === selectedNodeIdRef.current;
-    
+
     const label = node.name;
-    const baseFontSize = node.type === 'category' ? 12 : 9;
+    const isHub = node.type === 'category' || node.type === 'root';
+    const baseFontSize = node.type === 'root' ? 13 : node.type === 'category' ? 12 : 9;
     const fontSize = baseFontSize / globalScale;
-    
-    ctx.font = `${node.type === 'category' ? 'bold ' : ''}${fontSize}px var(--font-mono)`;
+
+    ctx.font = `${isHub ? 'bold ' : ''}${fontSize}px var(--font-mono)`;
 
     // 1. Draw glowing outer halo for selected or searched nodes
     if (isSelected || isHighlighted) {
@@ -53,26 +72,55 @@ export default function GraphWindow({
       ctx.stroke();
     }
 
-    // 2. Draw core node circle
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
-    ctx.fillStyle = node.color;
-    ctx.fill();
-
-    // Thin stroke boundary for categories
-    if (node.type === 'category') {
+    // 2. Draw the node core
+    if (node.type === 'root') {
+      // Central root: dark rounded square with the account's initial,
+      // mirroring the hub treatment in classic radial org maps
+      const s = node.val + 4;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(node.x - s, node.y - s, s * 2, s * 2, 4);
+      } else {
+        ctx.rect(node.x - s, node.y - s, s * 2, s * 2);
+      }
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fill();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5 / globalScale;
       ctx.stroke();
-    }
 
-    // 3. Render Node labels (only if we aren't zoomed out extremely far)
-    if (globalScale > 0.15) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      
-      // Draw text background box for categories to make them readable
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${node.val * 1.2}px var(--font-mono)`; // graph units: scales with the square
+      ctx.fillText(label.charAt(0).toUpperCase(), node.x, node.y + 0.5);
+      ctx.font = `bold ${fontSize}px var(--font-mono)`;
+    } else {
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
+      ctx.fillStyle = node.color;
+      ctx.fill();
+
+      // Thin stroke boundary for categories
       if (node.type === 'category') {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5 / globalScale;
+        ctx.stroke();
+      }
+    }
+
+    // 3. Labels: hubs are always labeled; repo labels appear only when zoomed
+    // in or highlighted (hover tooltips carry identity at low zoom), keeping
+    // the web readable at hundreds of nodes
+    const showLabel = isHub
+      ? globalScale > 0.15
+      : (isSelected || isHighlighted || globalScale > 1.4);
+    if (showLabel) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Draw text background box for hubs to make them readable
+      if (isHub) {
         const textWidth = ctx.measureText(label).width;
         ctx.fillStyle = 'rgba(13, 13, 13, 0.85)';
         ctx.fillRect(
@@ -83,8 +131,10 @@ export default function GraphWindow({
         );
       }
 
-      ctx.fillStyle = node.type === 'category' ? '#ff00ff' : (isSelected ? '#ff00ff' : '#00ff00');
-      ctx.fillText(label, node.x, node.y + node.val + fontSize + (node.type === 'category' ? 2 : 1));
+      ctx.fillStyle = node.type === 'category' ? node.color
+        : node.type === 'root' ? '#ffffff'
+        : (isSelected ? '#ff00ff' : '#00ff00');
+      ctx.fillText(label, node.x, node.y + node.val + fontSize + (isHub ? 2 : 1));
     }
   };
 
@@ -99,13 +149,47 @@ export default function GraphWindow({
       .nodeId('id')
       .nodeVal('val')
       .nodeColor('color')
-      .linkColor(link => link.type === 'semantic_connection' ? '#00ffff' : '#808080')
-      .linkWidth(link => link.type === 'semantic_connection' ? 1.5 : 1)
-      .linkDirectionalParticles(link => link.type === 'semantic_connection' ? 3 : 0) // Moving data streams
+      // Web mode uses faint threads so the ring geometry reads as the structure;
+      // force mode keeps the original brighter wiring
+      .linkColor(link => {
+        if (link.type === 'semantic_connection') {
+          return layoutModeRef.current === 'web' ? 'rgba(0, 255, 255, 0.25)' : '#00ffff';
+        }
+        return layoutModeRef.current === 'web' ? 'rgba(255, 255, 255, 0.10)' : '#808080';
+      })
+      .linkWidth(link => link.type === 'semantic_connection' ? (layoutModeRef.current === 'web' ? 1 : 1.5) : 1)
+      // Particles only in force mode: in the static web they read as noise
+      // and keep the rAF loop hot after the layout has settled
+      .linkDirectionalParticles(link =>
+        layoutModeRef.current === 'force' && link.type === 'semantic_connection' ? 3 : 0)
       .linkDirectionalParticleSpeed(0.006)
       .linkDirectionalParticleColor(() => '#00ffff')
       .linkDirectionalParticleWidth(2)
+      // Hover tooltip: identity at any zoom level without label clutter
+      .nodeLabel(node => {
+        if (node.type === 'root') {
+          return `<div><b>${esc(node.name)}</b><br/>Starred repository map</div>`;
+        }
+        if (node.type === 'category') {
+          return `<div><b>${esc(node.name)}</b><br/>Category</div>`;
+        }
+        return `<div><b>${esc(node.fullName || node.name)}</b><br/>${esc(node.language)} &middot; &#9733;${node.stars}</div>`;
+      })
       .backgroundColor('#0d0d0d');
+
+    // Faint concentric orbit guides behind the nodes (web mode only)
+    graph.onRenderFramePre((ctx, globalScale) => {
+      if (layoutModeRef.current !== 'web' || orbitRadiiRef.current.length === 0) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1 / globalScale;
+      orbitRadiiRef.current.forEach(r => {
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, 2 * Math.PI, false);
+        ctx.stroke();
+      });
+      ctx.restore();
+    });
 
     // Add repulsion, distance, and collision forces
     graph.d3Force('charge').strength(node => node.type === 'category' ? -400 : -120);
@@ -203,36 +287,52 @@ export default function GraphWindow({
     };
   }, []);
 
-  // Update graph data when graphData or showSemantic toggles change
+  // Update graph data when graphData, layout mode, or showSemantic change
   useEffect(() => {
     if (!graphData || graphData.nodes.length === 0) {
       hasZoomedRef.current = false;
       return;
     }
-    if (!graphInstanceRef.current) return;
+    const graph = graphInstanceRef.current;
+    if (!graph) return;
+
+    if (layoutMode === 'web') {
+      // Deterministic spider-web layout: pin every node, stop the simulation
+      // immediately (zero physics cost), and disable drag so rings stay crisp
+      const { orbitRadii } = applyRadialLayout(graphData);
+      orbitRadiiRef.current = orbitRadii;
+      graph.cooldownTicks(0);
+      graph.enableNodeDrag(false);
+    } else {
+      clearRadialLayout(graphData);
+      orbitRadiiRef.current = [];
+      graph.cooldownTicks(Infinity);
+      graph.enableNodeDrag(true);
+      graph.d3ReheatSimulation();
+    }
 
     // Filter out semantic links if toggled off
-    const filteredLinks = showSemantic 
-      ? graphData.links 
+    const filteredLinks = showSemantic
+      ? graphData.links
       : graphData.links.filter(l => l.type !== 'semantic_connection');
 
-    const filteredGraphData = {
+    graph.graphData({
       nodes: graphData.nodes,
       links: filteredLinks
-    };
+    });
 
-    graphInstanceRef.current.graphData(filteredGraphData);
-
-    // Zoom to fit on initial load/first populate
-    if (!hasZoomedRef.current) {
+    // Zoom to fit on first populate and whenever the layout mode flips
+    const layoutChanged = prevLayoutModeRef.current !== layoutMode;
+    prevLayoutModeRef.current = layoutMode;
+    if (!hasZoomedRef.current || layoutChanged) {
       hasZoomedRef.current = true;
       setTimeout(() => {
         if (graphInstanceRef.current) {
-          graphInstanceRef.current.zoomToFit(200, 50);
+          graphInstanceRef.current.zoomToFit(300, 60);
         }
-      }, 100);
+      }, layoutChanged ? 250 : 100);
     }
-  }, [graphData, showSemantic]);
+  }, [graphData, showSemantic, layoutMode]);
 
   // Refresh graph rendering on highlight/selection change (avoids full rebuilds)
   useEffect(() => {
@@ -243,16 +343,17 @@ export default function GraphWindow({
     }
   }, [searchQuery, selectedNodeId]);
 
-  // Handle dynamic update of D3 physics force settings
+  // Handle dynamic update of D3 physics force settings (force mode only —
+  // in web mode every node is pinned and the simulation is stopped)
   useEffect(() => {
     const graph = graphInstanceRef.current;
-    if (!graph) return;
-    
+    if (!graph || layoutMode !== 'force') return;
+
     graph.d3Force('charge').strength(node => node.type === 'category' ? gravity * 3 : gravity);
     graph.d3Force('link').distance(link => link.type === 'semantic_connection' ? linkDistance * 1.5 : linkDistance);
     graph.d3Force('collide').radius(node => node.val + collisionRadius);
     graph.d3ReheatSimulation(); // reheat layout simulation after changes
-  }, [gravity, linkDistance, collisionRadius]);
+  }, [gravity, linkDistance, collisionRadius, layoutMode]);
 
   const handleZoomFit = () => {
     audio.playClick();
@@ -268,7 +369,16 @@ export default function GraphWindow({
         <button className="win95-btn" onClick={handleZoomFit}>
           🔍 Center Graph
         </button>
-        <button 
+        <button
+          className="win95-btn"
+          onClick={() => {
+            audio.playClick();
+            setLayoutMode(layoutMode === 'web' ? 'force' : 'web');
+          }}
+        >
+          {layoutMode === 'web' ? '🕸️ Web Layout' : '🌀 Force Layout'}
+        </button>
+        <button
           className="win95-btn" 
           onClick={() => {
             audio.playClick();
@@ -282,29 +392,23 @@ export default function GraphWindow({
 
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Retro Legend */}
+      {/* Retro Legend — generated from the categories actually on the map */}
       <div className="graph-legend win95-raised" style={{ opacity: 0.9 }}>
         <div style={{ fontWeight: 'bold', marginBottom: '4px', borderBottom: '1px solid #333' }}>Legend</div>
-        <div className="legend-item">
-          <div className="legend-dot" style={{ backgroundColor: '#ff00ff' }} />
-          <span>Category Node</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-dot" style={{ backgroundColor: '#00ff00' }} />
-          <span>Star Node (Python/Default)</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-dot" style={{ backgroundColor: '#f1e05a' }} />
-          <span>JavaScript</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-dot" style={{ backgroundColor: '#3178c6' }} />
-          <span>TypeScript</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-dot" style={{ backgroundColor: '#dea584' }} />
-          <span>Rust</span>
-        </div>
+        {(graphData?.nodes || [])
+          .filter(n => n.type === 'category')
+          .slice(0, 8)
+          .map(cat => (
+            <div className="legend-item" key={cat.id}>
+              <div className="legend-dot" style={{ backgroundColor: cat.color }} />
+              <span>{cat.name}</span>
+            </div>
+          ))}
+        {(graphData?.nodes || []).filter(n => n.type === 'category').length > 8 && (
+          <div className="legend-item" style={{ color: '#888' }}>
+            <span>…and {(graphData?.nodes || []).filter(n => n.type === 'category').length - 8} more</span>
+          </div>
+        )}
         <div className="legend-item">
           <div className="legend-dot" style={{ backgroundColor: '#00ffff' }} />
           <span>Semantic Relation</span>
@@ -392,7 +496,13 @@ export default function GraphWindow({
             {/* Divider */}
             <div style={{ borderTop: '1.5px solid var(--os-shadow)', borderBottom: '1.5px solid var(--os-light)', margin: '6px 0' }} />
 
-            {/* Physics Settings Header */}
+            {/* Physics Settings: only meaningful in force mode (web mode pins all nodes) */}
+            {layoutMode === 'web' && (
+              <div style={{ fontSize: '10px', color: '#444' }}>
+                Physics disabled in 🕸️ Web Layout — positions are fixed. Switch to 🌀 Force Layout to enable.
+              </div>
+            )}
+            {layoutMode === 'force' && (<>
             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Physics Config:</div>
 
             {/* Gravity Slider */}
@@ -460,6 +570,7 @@ export default function GraphWindow({
                 <span>50</span>
               </div>
             </div>
+            </>)}
           </div>
         )}
       </div>

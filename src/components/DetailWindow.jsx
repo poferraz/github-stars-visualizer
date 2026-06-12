@@ -18,6 +18,36 @@ export default function DetailWindow({ node, allNodes, allLinks, onSelectNode, o
     }
   };
 
+  if (node.type === 'root') {
+    const repoCount = allNodes.filter(n => n.type === 'repo').length;
+    const categoryCount = allNodes.filter(n => n.type === 'category').length;
+    return (
+      <div className="layout-col" style={{ height: '100%', overflowY: 'auto' }}>
+        <div style={{ borderBottom: '1px solid #777', paddingBottom: '6px', marginBottom: '8px' }}>
+          <h3 style={{ fontFamily: 'var(--font-os)', fontSize: '16px' }}>💾 Account: {node.name}</h3>
+          <span style={{ fontSize: '11px', color: '#444' }}>Center of the star map</span>
+        </div>
+        <div className="win95-recessed" style={{ padding: '6px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontFamily: 'var(--font-mono)' }}>
+          <span>⭐ Repos: {repoCount}</span>
+          <span>📁 Categories: {categoryCount}</span>
+        </div>
+        <div style={{ marginTop: 'auto', paddingTop: '10px' }}>
+          <button
+            type="button"
+            className="win95-btn"
+            style={{ width: '100%' }}
+            onClick={() => {
+              audio.playClick();
+              onClose();
+            }}
+          >
+            Close Properties
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (node.type === 'category') {
     // Gather all repos connected to this category node
     const connectedRepos = allLinks

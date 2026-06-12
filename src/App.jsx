@@ -58,9 +58,10 @@ export default function App() {
   const currentGraphData = React.useMemo(() => {
     return buildGraphData(repositories, aiAnalysis, {
       languages: selectedLanguages,
-      minStars
+      minStars,
+      rootName: settings.username || 'STARS'
     });
-  }, [repositories, aiAnalysis, selectedLanguages, minStars]);
+  }, [repositories, aiAnalysis, selectedLanguages, minStars, settings.username]);
 
   const allLanguages = React.useMemo(() => {
     const langs = new Set();

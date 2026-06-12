@@ -469,6 +469,21 @@ label {
   gap: 6px;
 }
 
+/* Hover tooltip injected by the force-graph library: restyle as a classic
+   Win95 yellow tooltip. !important is required to beat the library's own
+   inline-injected styles. */
+.graph-container .graph-tooltip {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  line-height: 15px;
+  background: #ffffe1 !important;
+  color: #000000 !important;
+  border: 1px solid #000000;
+  border-radius: 0 !important;
+  padding: 3px 6px !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+
 .graph-legend {
   position: absolute;
   bottom: 10px;

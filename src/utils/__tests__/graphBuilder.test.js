@@ -90,6 +90,52 @@ describe('Graph Data Builder Utility', () => {
     expect(graphData.nodes.filter(n => n.type === 'category')).toHaveLength(0);
   });
 
+  it('should add a root node linked to every category when rootName is provided', () => {
+    const graphData = buildGraphData(mockRepos, mockAiAnalysis, { rootName: 'octocat' });
+
+    const root = graphData.nodes.find(n => n.type === 'root');
+    expect(root).toBeDefined();
+    expect(root.id).toBe('__root__');
+    expect(root.name).toBe('octocat');
+
+    const rootLinks = graphData.links.filter(l => l.type === 'root_link');
+    expect(rootLinks).toHaveLength(2); // one per category
+    expect(rootLinks.every(l => l.source === '__root__')).toBe(true);
+  });
+
+  it('should not add a root node without rootName or when no repos survive filters', () => {
+    expect(buildGraphData(mockRepos, mockAiAnalysis).nodes.find(n => n.type === 'root')).toBeUndefined();
+    expect(
+      buildGraphData(mockRepos, mockAiAnalysis, { rootName: 'octocat', minStars: 99999 })
+        .nodes.find(n => n.type === 'root')
+    ).toBeUndefined();
+  });
+
+  it('should give each category a distinct color and repos their category color', () => {
+    const graphData = buildGraphData(mockRepos, mockAiAnalysis);
+
+    const categoryNodes = graphData.nodes.filter(n => n.type === 'category');
+    const colors = new Set(categoryNodes.map(c => c.color));
+    expect(colors.size).toBe(categoryNodes.length); // all distinct
+
+    const repoA = graphData.nodes.find(n => n.id === 'owner/repo-a');
+    const webFrameworks = categoryNodes.find(c => c.id === 'Web Frameworks');
+    expect(repoA.color).toBe(webFrameworks.color);
+    expect(repoA.languageColor).toBeDefined();
+  });
+
+  it('should keep Uncategorized grey and color assignment stable across repo order', () => {
+    const uncategorized = buildGraphData(mockRepos, {}).nodes.find(n => n.type === 'category');
+    expect(uncategorized.id).toBe('Uncategorized');
+    expect(uncategorized.color).toBe('#9aa0a6');
+
+    const forward = buildGraphData(mockRepos, mockAiAnalysis);
+    const reversed = buildGraphData([...mockRepos].reverse(), mockAiAnalysis);
+    const colorOf = (gd, id) => gd.nodes.find(n => n.id === id).color;
+    expect(colorOf(forward, 'Web Frameworks')).toBe(colorOf(reversed, 'Web Frameworks'));
+    expect(colorOf(forward, 'Utilities')).toBe(colorOf(reversed, 'Utilities'));
+  });
+
   it('should handle case-insensitive lookups and resolve semantic links with mismatched casing', () => {
     const reposWithDifferentCasing = [
       {
