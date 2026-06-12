@@ -9,6 +9,12 @@ function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+function prefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export default function GraphWindow({
   graphData,
   onSelectNode,
@@ -166,9 +172,10 @@ export default function GraphWindow({
       })
       .linkWidth(link => link.type === 'semantic_connection' ? (layoutModeRef.current === 'web' ? 1 : 1.5) : 1)
       // Particles only in force mode: in the static web they read as noise
-      // and keep the rAF loop hot after the layout has settled
+      // and keep the rAF loop hot after the layout has settled. Disabled
+      // entirely when the OS asks for reduced motion.
       .linkDirectionalParticles(link =>
-        layoutModeRef.current === 'force' && link.type === 'semantic_connection' ? 3 : 0)
+        !prefersReducedMotion() && layoutModeRef.current === 'force' && link.type === 'semantic_connection' ? 3 : 0)
       .linkDirectionalParticleSpeed(0.006)
       .linkDirectionalParticleColor(() => '#00ffff')
       .linkDirectionalParticleWidth(2)

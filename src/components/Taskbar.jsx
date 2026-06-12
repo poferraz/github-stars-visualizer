@@ -51,7 +51,7 @@ export default function Taskbar({
   }, []);
 
   return (
-    <div className="taskbar" onClick={(e) => e.stopPropagation()}>
+    <div className="taskbar" role="navigation" aria-label="Taskbar" onClick={(e) => e.stopPropagation()}>
       
       {/* 1. Start Button & Menu */}
       <div style={{ position: 'relative' }}>
@@ -71,31 +71,43 @@ export default function Taskbar({
         </button>
 
         {startMenuOpen && (
-          <div className="start-menu">
+          <div className="start-menu" role="menu" aria-label="Start menu">
             <div className="start-menu-sidebar">
               <span>GitStars Map v1.0</span>
             </div>
             <div className="start-menu-items">
               <div 
                 className="start-menu-item"
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                 onClick={() => handleStartItemClick(() => onToggleWindow('settings'))}
               >
                 ⚙️ API Settings
               </div>
               <div 
                 className="start-menu-item"
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                 onClick={() => handleStartItemClick(() => onToggleWindow('help'))}
               >
                 ❓ Help Manual
               </div>
               <div 
                 className="start-menu-item"
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                 onClick={() => handleStartItemClick(() => onToggleWindow('graph'))}
               >
                 🕸️ Stars Map
               </div>
               <div 
                 className="start-menu-item"
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                 onClick={() => handleStartItemClick(() => onToggleWindow('detail'))}
               >
                 🔍 Node Properties
@@ -103,6 +115,9 @@ export default function Taskbar({
               <div className="start-menu-divider" />
               <div 
                 className="start-menu-item"
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                 onClick={() => handleStartItemClick(() => {
                   if (window.confirm('WARNING: This will delete all cached stars and local API tokens. Continue?')) {
                     onResetAll();
@@ -114,6 +129,9 @@ export default function Taskbar({
               <div className="start-menu-divider" />
               <div 
                 className="start-menu-item"
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                 onClick={() => handleStartItemClick(onShutdown)}
               >
                 🔘 Shut Down...

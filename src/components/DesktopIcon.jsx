@@ -15,8 +15,20 @@ export default function DesktopIcon({ title, icon, isSelected, onClick, onDouble
   return (
     <div
       className={`desktop-icon ${isSelected ? 'selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-label={title}
       onClick={handleSingleClick}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={(e) => {
+        // Keyboard activation = double-click (open), matching desktop idiom
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          audio.playClick();
+          onDoubleClick();
+        }
+      }}
     >
       <div className="desktop-icon-img" style={{ fontSize: '26px' }}>
         {icon}

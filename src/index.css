@@ -469,6 +469,33 @@ label {
   gap: 6px;
 }
 
+/* Keyboard focus on form fields: dotted retro ring (buttons already have
+   their own focus-visible treatment) */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: 1px;
+}
+
+/* Keyboard focus on desktop icons and start-menu items */
+.desktop-icon:focus-visible {
+  outline: 1px dotted #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+.start-menu-item:focus-visible {
+  outline: none;
+  background: #000080;
+  color: #ffffff;
+}
+
+/* Respect the OS-level motion preference: kill the always-on CRT flicker */
+@media (prefers-reduced-motion: reduce) {
+  .crt-flicker {
+    animation: none;
+  }
+}
+
 /* Bottom-right resize grip: classic Win95 diagonal ridges */
 .win95-resize-grip {
   position: absolute;
