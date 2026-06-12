@@ -378,10 +378,23 @@ export default function GraphWindow({
           <input
             id="search-stars"
             type="text"
-            placeholder="Type name (e.g. react)"
+            placeholder="Type name, Enter to fly"
             style={{ width: '160px', height: '22px', fontSize: '12px' }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter flies the camera to the first matching node
+              if (e.key !== 'Enter' || !searchQuery || !graphInstanceRef.current) return;
+              e.preventDefault();
+              const q = searchQuery.toLowerCase();
+              const { nodes } = graphInstanceRef.current.graphData();
+              const match = nodes.find(n => n.name && n.name.toLowerCase().includes(q));
+              if (match && match.x !== undefined) {
+                audio.playClick();
+                graphInstanceRef.current.centerAt(match.x, match.y, 600);
+                graphInstanceRef.current.zoom(2.5, 600);
+              }
+            }}
           />
           {searchQuery && (
             <button

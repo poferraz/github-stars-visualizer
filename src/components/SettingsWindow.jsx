@@ -117,7 +117,11 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             <option value="100">100 Stars (Detailed)</option>
             <option value="150">150 Stars (Max Recommended)</option>
             <option value="300">300 Stars (Large Graph - Slow)</option>
+            <option value="500">500 Stars (Hard Cap)</option>
           </select>
+          <span style={{ fontSize: '10px', color: '#666', marginTop: '2px', display: 'block' }}>
+            The map shows at most your 500 most recent stars — accounts with more are truncated.
+          </span>
         </div>
       </fieldset>
 
