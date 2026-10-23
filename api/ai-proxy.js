@@ -30,6 +30,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Protocol not allowed. Only http and https are allowed.' });
   }
 
+  // Enforce strict destination allowlist to prevent Server-Side Request Forgery (SSRF)
+  const ALLOWED_HOSTS = new Set([
+    'api.openai.com',
+    'openrouter.ai',
+    'api.groq.com',
+    'generativelanguage.googleapis.com'
+  ]);
+
+  if (!ALLOWED_HOSTS.has(parsedUrl.hostname)) {
+    return res.status(403).json({ error: 'Upstream destination host not permitted' });
+  }
+
   try {
     const headers = {
       'Content-Type': 'application/json',

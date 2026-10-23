@@ -71,10 +71,13 @@ describe('Universal AI Router', () => {
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=gemini-fake-key'),
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ 'Content-Type': 'application/json' })
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'x-goog-api-key': 'gemini-fake-key'
+        })
       })
     );
     expect(rateLimiter.increment).toHaveBeenCalledTimes(1);

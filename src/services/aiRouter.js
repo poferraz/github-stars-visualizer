@@ -18,7 +18,8 @@ export const aiRouter = {
     switch (provider) {
       case 'gemini': {
         const selectedModel = model || 'gemini-2.5-flash';
-        url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+        headers['x-goog-api-key'] = apiKey;
         body = {
           contents: [
             {
