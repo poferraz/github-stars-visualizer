@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import WindowFrame from './components/WindowFrame';
 import DesktopIcon from './components/DesktopIcon';
 import SettingsWindow from './components/SettingsWindow';
@@ -7,7 +7,9 @@ import DetailWindow from './components/DetailWindow';
 import HelpWindow from './components/HelpWindow';
 import Taskbar from './components/Taskbar';
 import { audio } from './utils/audio';
-import { fetchStarredRepos } from './services/github';
+import { defaultSettings, forgetPreferences, loadSettings, savePreferences } from './services/settings';
+import { rateLimiter } from './services/rateLimiter';
+import { fetchStarredRepos, isPublicStar } from './services/github';
 import { analyzeStars } from './services/aiAnalysis';
 import { buildGraphData } from './utils/graphBuilder';
 
@@ -18,29 +20,22 @@ export default function App() {
   const [selectedIcon, setSelectedIcon] = useState(null);
 
   // 2. Settings State
-  const [settings, setSettings] = useState(() => {
-    try {
-      const stored = localStorage.getItem('gitstars_settings');
-      return stored ? JSON.parse(stored) : {
-        username: '',
-        githubToken: '',
-        maxStars: 50,
-        provider: 'gemini',
-        apiKey: '',
-        model: 'gemini-2.5-flash',
-        customUrl: ''
-      };
-    } catch (e) {
-      return { username: '', githubToken: '', maxStars: 50, provider: 'gemini', apiKey: '', model: 'gemini-2.5-flash', customUrl: '' };
-    }
-  });
+  const [settings, setSettings] = useState(loadSettings);
+  const [settingsFormVersion, setSettingsFormVersion] = useState(0);
 
   // 3. Cache & Computed Data
   const [repositories, setRepositories] = useState(() => {
     try {
       const stored = localStorage.getItem('gitstars_cached_repos');
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
+      const cached = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(cached) || !cached.every(isPublicStar)) {
+        // Analysis and related names may also refer to the old private entries.
+        localStorage.removeItem('gitstars_cached_ai');
+        localStorage.removeItem('gitstars_cached_repos');
+        return [];
+      }
+      return cached;
+    } catch {
       return [];
     }
   });
@@ -48,7 +43,7 @@ export default function App() {
     try {
       const stored = localStorage.getItem('gitstars_cached_ai');
       return stored ? JSON.parse(stored) : {};
-    } catch (e) {
+    } catch {
       return {};
     }
   });
@@ -214,7 +209,7 @@ export default function App() {
 
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('gitstars_settings', JSON.stringify(newSettings));
+    savePreferences(newSettings);
     
     // Clear data cache if username changed to force re-fetch
     if (newSettings.username !== settings.username) {
@@ -233,16 +228,12 @@ export default function App() {
   };
 
   const handleResetAll = () => {
-    localStorage.clear();
-    setSettings({
-      username: '',
-      githubToken: '',
-      maxStars: 50,
-      provider: 'gemini',
-      apiKey: '',
-      model: 'gemini-2.5-flash',
-      customUrl: ''
-    });
+    forgetPreferences();
+    localStorage.removeItem('gitstars_cached_repos');
+    localStorage.removeItem('gitstars_cached_ai');
+    rateLimiter.reset();
+    setSettings({ ...defaultSettings });
+    setSettingsFormVersion(version => version + 1);
     setRepositories([]);
     setAiAnalysis({});
     setSelectedLanguages([]);
@@ -483,7 +474,8 @@ export default function App() {
               onClose={() => toggleWindow('settings')}
               onFocus={() => focusWindow('settings')}
             >
-              <SettingsWindow 
+              <SettingsWindow
+                key={settingsFormVersion}
                 settings={settings} 
                 onSave={handleSaveSettings} 
                 onClose={() => toggleWindow('settings')} 

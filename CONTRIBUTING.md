@@ -1,62 +1,19 @@
-# 🤝 Contributing to GitStars Map
+# Contributing to GitStars Map
 
-Thank you for your interest in contributing to GitStars Map! We want to make contributing to this project as easy and transparent as possible.
+Follow the [local setup instructions](README.md#run-locally) to install the locked dependencies and start the desktop. Keep each pull request focused on one change.
 
----
+## Check a change
 
-## 🏛️ Code of Conduct
+```sh
+npm run lint
+npm test
+npm run build
+```
 
-By participating in this project, you agree to abide by basic open-source citizenship standards: be respectful, welcoming, and collaborative.
+The tests cover GitHub requests, model routing, AI response handling, local limits, graph construction, and the server-side proxy. Add a test alongside the affected service or utility when changing one of these behaviors. Use dummy credentials and mocked provider responses in automated tests.
 
----
+For a change to the desktop, open **API Settings**, enter a public GitHub username with stars, leave the credential fields empty, and open **Stars Map**. Check the affected control and click a repository to open its details. Include the steps you tried and the observed result in the pull request. A screenshot can help explain a visual change. Keep account credentials and personal data out of screenshots, logs, and fixtures.
 
-## 🛠️ Local Development Setup
+## Changing an AI provider
 
-To set up the development environment locally:
-
-1. **Fork the Repository:** Fork this repository to your own GitHub account and clone it locally.
-2. **Install Dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Run Dev Server:** Start the Vite local development server:
-   ```bash
-   npm run dev
-   ```
-4. **Linting Check:** Run ESLint to verify style guide conformity:
-   ```bash
-   npm run lint
-   ```
-
----
-
-## 🧪 Testing Guidelines (TDD)
-
-We use **Vitest** for our unit tests. All business logic, rates/rate-limiting code, and router logic must have unit tests.
-
-*   To run the test suite once:
-    ```bash
-    npm test
-    ```
-*   To run tests in watch mode (interactive):
-    ```bash
-    npx vitest
-    ```
-
-> [!IMPORTANT]
-> **If you add a new utility or service, you must write a corresponding test file under `__tests__/`** and verify that all 26+ tests pass successfully before submitting a pull request.
-
----
-
-## 🔀 Pull Request Process
-
-1. **Create a Branch:** Create a branch for your feature or bugfix (e.g., `feature/custom-themes` or `bugfix/graph-clickability`).
-2. **Write Clean Code:** Follow the existing project styling. Keep React components clean and utilize the CSS custom properties defined in `src/index.css`.
-3. **Document Your Work:** Update the `README.md` if you are adding new features, configuration options, or dependencies.
-4. **Submit the PR:** Describe your changes in detail. If your changes affect the UI, please include screenshots or a short GIF.
-
----
-
-## 🔒 Security & Secrets
-
-Do not ever commit any API Keys, Google Gemini tokens, or GitHub Personal Access Tokens (PATs) to the codebase or `.env` files. The project is designed to run completely on the client side; all keys should be dynamically entered by the user in the UI settings panel and stored securely in their browser's local storage.
+The built-in providers run from the browser. The custom provider passes through the app's server function. A change to either path should keep the destination shown in Settings and the [README](README.md#data-and-optional-ai) accurate. Use the proxy tests for server behavior or a function-enabled deployment for a full custom-provider check. The Vite development server alone serves the frontend.

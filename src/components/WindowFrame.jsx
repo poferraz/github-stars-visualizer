@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { audio } from '../utils/audio';
 
 export default function WindowFrame({
-  id,
   title,
   isOpen,
   onClose,
@@ -22,7 +21,6 @@ export default function WindowFrame({
   const [isMaximized, setIsMaximized] = useState(defaultMaximized);
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const headerRef = useRef(null);
 
   const handleMouseDown = (e) => {
     if (isMaximized) return;
@@ -39,20 +37,6 @@ export default function WindowFrame({
     });
   };
 
-  const handleMouseMove = (e) => {
-    if (!dragging) return;
-    
-    // Bounds check to keep title bar on screen
-    const newX = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragStart.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - dragStart.y));
-    
-    setPos({ x: newX, y: newY });
-  };
-
-  const handleMouseUp = () => {
-    setDragging(false);
-  };
-
   // Add touch support for mobile drag-and-drop
   const handleTouchStart = (e) => {
     if (isMaximized) return;
@@ -67,26 +51,30 @@ export default function WindowFrame({
     });
   };
 
-  const handleTouchMove = (e) => {
-    if (!dragging) return;
-    const touch = e.touches[0];
-    const newX = Math.max(0, Math.min(window.innerWidth - 100, touch.clientX - dragStart.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 40, touch.clientY - dragStart.y));
-    setPos({ x: newX, y: newY });
-  };
-
   useEffect(() => {
-    if (dragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleTouchMove);
-      window.addEventListener('touchend', handleMouseUp);
-    }
+    if (!dragging) return;
+
+    // Keep the title bar within the viewport for both mouse and touch drags.
+    const move = ({ clientX, clientY }) => {
+      setPos({
+        x: Math.max(0, Math.min(window.innerWidth - 100, clientX - dragStart.x)),
+        y: Math.max(0, Math.min(window.innerHeight - 40, clientY - dragStart.y))
+      });
+    };
+    const handleTouchMove = event => move(event.touches[0]);
+    const endDrag = () => setDragging(false);
+
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', endDrag);
+    window.addEventListener('touchcancel', endDrag);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', endDrag);
       window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleMouseUp);
+      window.removeEventListener('touchend', endDrag);
+      window.removeEventListener('touchcancel', endDrag);
     };
   }, [dragging, dragStart]);
 
@@ -120,7 +108,6 @@ export default function WindowFrame({
       onClick={onFocus}
     >
       <div
-        ref={headerRef}
         className={`win95-title-bar ${isActive ? 'active' : 'inactive'}`}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}

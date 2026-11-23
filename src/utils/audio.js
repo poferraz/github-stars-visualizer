@@ -31,7 +31,7 @@ export const audio = {
       
       osc.start();
       osc.stop(ctx.currentTime + 0.04);
-    } catch (e) {
+    } catch {
       // Fail silently if audio is blocked
     }
   },
@@ -57,7 +57,9 @@ export const audio = {
       
       osc.start(now);
       osc.stop(now + 0.3);
-    } catch (e) {}
+    } catch {
+      // Audio is optional when the browser blocks playback.
+    }
   },
   
   playError() {
@@ -79,7 +81,9 @@ export const audio = {
       
       osc.start(now);
       osc.stop(now + 0.25);
-    } catch (e) {}
+    } catch {
+      // Audio is optional when the browser blocks playback.
+    }
   },
   
   async playFloppySeek(durationMs = 1500) {
@@ -108,6 +112,8 @@ export const audio = {
         // Wait for next step sound
         await new Promise(resolve => setTimeout(resolve, 120));
       }
-    } catch (e) {}
+    } catch {
+      // Audio is optional when the browser blocks playback.
+    }
   }
 };

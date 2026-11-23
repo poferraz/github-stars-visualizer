@@ -124,7 +124,7 @@ Make sure all repository names used as keys and in the related array match the i
       if (onProgress) {
         onProgress('✓ Successfully parsed AI response.', 'success', 80);
       }
-    } catch (err) {
+    } catch {
       if (onProgress) {
         onProgress('⚠️ Standard JSON parse failed. Running heuristic auto-repair...', 'warning', 78);
       }

@@ -1,41 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { audio } from '../utils/audio';
 import { aiRouter } from '../services/aiRouter';
+import { changeDestination } from '../services/settings';
+import { CUSTOM_ENDPOINTS } from '../services/providerEndpoints';
 
 export default function SettingsWindow({ settings, onSave, onClose }) {
-  const [username, setUsername] = useState(settings.username || '');
-  const [githubToken, setGithubToken] = useState(settings.githubToken || '');
-  const [maxStars, setMaxStars] = useState(settings.maxStars || 100);
-  const [provider, setProvider] = useState(settings.provider || 'gemini');
-  const [apiKey, setApiKey] = useState(settings.apiKey || '');
-  const [model, setModel] = useState(settings.model || 'gemini-2.5-flash');
-  const [customUrl, setCustomUrl] = useState(settings.customUrl || '');
-
-  // Testing connection state
+  const [draft, setDraft] = useState(settings);
+  const { username, githubToken, maxStars, provider, apiKey, model, customUrl } = draft;
   const [testStatus, setTestStatus] = useState({ state: 'idle', message: '' });
+  const testVersion = useRef(0);
 
-  useEffect(() => {
-    setUsername(settings.username || '');
-    setGithubToken(settings.githubToken || '');
-    setMaxStars(settings.maxStars || 50);
-    setProvider(settings.provider || 'gemini');
-    setApiKey(settings.apiKey || '');
-    setModel(settings.model || 'gemini-2.5-flash');
-    setCustomUrl(settings.customUrl || '');
-  }, [settings]);
+  function updateDraft(next) {
+    testVersion.current += 1;
+    setTestStatus({ state: 'idle', message: '' });
+    setDraft(next);
+  }
 
   const handleSave = (e) => {
     e.preventDefault();
     audio.playSuccess();
-    onSave({
-      username,
-      githubToken,
-      maxStars: Number(maxStars),
-      provider,
-      apiKey,
-      model,
-      customUrl
-    });
+    onSave(draft);
   };
 
   const handleTestConnection = async () => {
@@ -45,6 +29,12 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
       return;
     }
     
+    if (provider === 'custom' && !CUSTOM_ENDPOINTS.includes(customUrl)) {
+      setTestStatus({ state: 'error', message: 'Choose a provider endpoint first.' });
+      return;
+    }
+
+    const version = ++testVersion.current;
     setTestStatus({ state: 'loading', message: 'Pinging AI...' });
     audio.playClick();
 
@@ -57,9 +47,11 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
         prompt: 'Say the word "Success" and nothing else.',
         customUrl
       });
+      if (version !== testVersion.current) return;
       setTestStatus({ state: 'success', message: 'Connection Successful!' });
       audio.playSuccess();
     } catch (err) {
+      if (version !== testVersion.current) return;
       setTestStatus({ state: 'error', message: err.message });
       audio.playError();
     }
@@ -80,7 +72,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             style={{ width: '100%' }}
             placeholder="e.g. torvalds"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => updateDraft({ ...draft, username: e.target.value })}
             required
           />
         </div>
@@ -91,12 +83,12 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             type="password"
             className="layout-flex"
             style={{ width: '100%' }}
-            placeholder="ghp_xxxxxxxxxxxx"
+            autoComplete="off"
             value={githubToken}
-            onChange={(e) => setGithubToken(e.target.value)}
+            onChange={(e) => updateDraft({ ...draft, githubToken: e.target.value })}
           />
           <span style={{ fontSize: '10px', color: '#666', marginTop: '2px', display: 'block' }}>
-            Increases rate limit from 60 to 5000 requests/hr. Required for private stars.
+            Public stars work without a token. An optional token goes to GitHub and can increase your request limit.
           </span>
         </div>
         <div className="field-group">
@@ -105,7 +97,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             id="gh-limit"
             style={{ width: '100%' }}
             value={maxStars}
-            onChange={(e) => setMaxStars(e.target.value)}
+            onChange={(e) => updateDraft({ ...draft, maxStars: Number(e.target.value) })}
           >
             <option value="30">30 Stars (Ultra Fast)</option>
             <option value="50">50 Stars (Recommended)</option>
@@ -126,33 +118,43 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             id="ai-provider"
             style={{ width: '100%' }}
             value={provider}
-            onChange={(e) => {
-              const selected = e.target.value;
-              setProvider(selected);
-              if (selected === 'gemini') setModel('gemini-2.5-flash');
-              else if (selected === 'openrouter') setModel('google/gemini-2.5-flash');
-              else if (selected === 'openai') setModel('gpt-4o-mini');
-              else if (selected === 'groq') setModel('llama3-8b-8192');
-            }}
+            onChange={(e) => updateDraft(changeDestination(draft, e.target.value, customUrl))}
           >
-            <option value="gemini">Google Gemini (Free Tier Available)</option>
-            <option value="openrouter">OpenRouter (Access Free Models)</option>
-            <option value="openai">OpenAI (GPT-4o-mini)</option>
-            <option value="groq">Groq (Llama 3)</option>
-            <option value="custom">Custom API Proxy Endpoint</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="openai">OpenAI</option>
+            <option value="groq">Groq</option>
+            <option value="custom">Custom endpoint via site relay</option>
           </select>
         </div>
 
+        {provider === 'custom' && (
+          <div className="field-group">
+            <label htmlFor="ai-custom-url">Provider endpoint:</label>
+            <select
+              id="ai-custom-url"
+              style={{ width: '100%' }}
+              value={customUrl}
+              required={Boolean(apiKey)}
+              onChange={(e) => updateDraft(changeDestination(draft, provider, e.target.value))}
+            >
+              <option value="">Choose an endpoint</option>
+              {CUSTOM_ENDPOINTS.map(url => <option key={url} value={url}>{url}</option>)}
+            </select>
+            <small>The site relay receives your AI key and prompt and forwards them to this endpoint.</small>
+          </div>
+        )}
+
         <div className="field-group">
-          <label htmlFor="ai-key">API Key (Saved Locally Only):</label>
+          <label htmlFor="ai-key">AI API Key (optional):</label>
           <input
             id="ai-key"
             type="password"
             className="layout-flex"
             style={{ width: '100%' }}
-            placeholder="AI Key (stored securely in browser)"
+            autoComplete="off"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => updateDraft({ ...draft, apiKey: e.target.value })}
           />
         </div>
 
@@ -164,26 +166,10 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             className="layout-flex"
             style={{ width: '100%' }}
             value={model}
-            onChange={(e) => setModel(e.target.value)}
+            onChange={(e) => updateDraft({ ...draft, model: e.target.value })}
           />
         </div>
 
-        {provider === 'custom' && (
-          <div className="field-group">
-            <label htmlFor="ai-custom-url">API Base URL:</label>
-            <input
-              id="ai-custom-url"
-              type="text"
-              className="layout-flex"
-              style={{ width: '100%' }}
-              placeholder="e.g. https://ollama.com/v1/chat/completions"
-              value={customUrl}
-              onChange={(e) => setCustomUrl(e.target.value)}
-            />
-          </div>
-        )}
-
-        {/* Informative billing protection warning */}
         <div 
           className="win95-recessed" 
           style={{ 
@@ -194,7 +180,7 @@ export default function SettingsWindow({ settings, onSave, onClose }) {
             marginTop: '6px' 
           }}
         >
-          <strong>🛡️ Zero-Cost Guarantee:</strong> If you use Google AI Studio (Gemini), do not add credit card info to your Google account. Gemini will block requests (HTTP 429) when the free tier limit (15 requests/min) is reached. It will never charge you.
+          Keys are kept in this tab until you reload or close it. Testing a connection and indexing with AI both send requests. Your provider sets prices and quotas. Check your account’s billing settings before using a key.
         </div>
       </fieldset>
 

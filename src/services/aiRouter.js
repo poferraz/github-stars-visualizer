@@ -1,24 +1,24 @@
 import { rateLimiter } from './rateLimiter';
+import { CHAT_ENDPOINTS, CUSTOM_ENDPOINTS } from './providerEndpoints.js';
 
 export const aiRouter = {
   async sendMessage({ provider, apiKey, model, prompt, customUrl = '' }) {
-    if (!apiKey) {
+    if (typeof apiKey !== 'string' || !apiKey.trim()) {
       throw new Error('API Key is required.');
     }
 
-    // 1. Guard check for local rate limiting
     rateLimiter.checkLimit();
 
-    let url = '';
-    let headers = {
+    let url;
+    const headers = {
       'Content-Type': 'application/json'
     };
-    let body = {};
+    let body;
 
     switch (provider) {
       case 'gemini': {
         const selectedModel = model || 'gemini-2.5-flash';
-        url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selectedModel)}:generateContent`;
         headers['x-goog-api-key'] = apiKey;
         body = {
           contents: [
@@ -33,7 +33,7 @@ export const aiRouter = {
         break;
       }
       case 'openrouter': {
-        url = 'https://openrouter.ai/api/v1/chat/completions';
+        url = CHAT_ENDPOINTS.openrouter;
         headers['Authorization'] = `Bearer ${apiKey}`;
         headers['HTTP-Referer'] = typeof window !== 'undefined' ? (window.location?.origin || 'https://github-stars-visualizer.local') : 'https://github-stars-visualizer.local';
         headers['X-Title'] = 'GitStars Visualizer';
@@ -45,7 +45,7 @@ export const aiRouter = {
         break;
       }
       case 'openai': {
-        url = customUrl || 'https://api.openai.com/v1/chat/completions';
+        url = CHAT_ENDPOINTS.openai;
         headers['Authorization'] = `Bearer ${apiKey}`;
         body = {
           model: model || 'gpt-4o-mini',
@@ -55,7 +55,7 @@ export const aiRouter = {
         break;
       }
       case 'groq': {
-        url = 'https://api.groq.com/openai/v1/chat/completions';
+        url = CHAT_ENDPOINTS.groq;
         headers['Authorization'] = `Bearer ${apiKey}`;
         body = {
           model: model || 'llama3-8b-8192',
@@ -65,7 +65,13 @@ export const aiRouter = {
         break;
       }
       case 'custom': {
-        url = typeof window !== 'undefined' ? `${window.location.origin}/api/ai-proxy` : '/api/ai-proxy';
+        if (!CUSTOM_ENDPOINTS.includes(customUrl)) {
+          throw new Error('Choose a supported provider endpoint.');
+        }
+        if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
+          throw new Error('Open this app over HTTPS to use the provider relay.');
+        }
+        url = `${window.location.origin}/api/ai-proxy`;
         body = {
           targetUrl: customUrl,
           apiKey,
@@ -75,58 +81,43 @@ export const aiRouter = {
         break;
       }
       default:
-        throw new Error(`Unsupported provider: ${provider}`);
+        throw new Error('Choose a supported AI provider.');
     }
 
-    // 2. Execute fetch
     let response;
     try {
       response = await fetch(url, {
         method: 'POST',
+        redirect: 'error',
+        credentials: 'omit',
         headers,
         body: JSON.stringify(body)
       });
-    } catch (err) {
-      throw new Error(`Network error calling AI service: ${err.message}`);
+    } catch {
+      throw new Error('Could not reach the AI service.');
     }
 
-    // 3. Handle rate limits & HTTP errors
     if (response.status === 429) {
       throw new Error('API rate limit reached (HTTP 429). Please wait a bit before trying again.');
     }
 
     if (!response.ok) {
-      let errorMsg = `API request failed with status ${response.status}`;
-      try {
-        const errJson = await response.json();
-        errorMsg += `: ${errJson.error?.message || errJson.message || JSON.stringify(errJson)}`;
-      } catch (e) {
-        // Fallback to text status
-        errorMsg += ` (${response.statusText})`;
-      }
-      throw new Error(errorMsg);
+      throw new Error(`API request failed with status ${response.status}.`);
     }
 
-    // 4. Parse response
-    const data = await response.json();
-    let text = '';
-
-    if (provider === 'gemini') {
-      try {
-        text = data.candidates[0].content.parts[0].text;
-      } catch (err) {
-        throw new Error('Invalid response structure received from Gemini API.');
-      }
-    } else {
-      // Chat completion style (OpenRouter, OpenAI, Groq, Custom)
-      try {
-        text = data.choices[0].message.content;
-      } catch (err) {
-        throw new Error('Invalid chat completions structure received from AI provider.');
-      }
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('The AI provider returned an invalid response.');
+    }
+    const text = provider === 'gemini'
+      ? data?.candidates?.[0]?.content?.parts?.[0]?.text
+      : data?.choices?.[0]?.message?.content;
+    if (typeof text !== 'string') {
+      throw new Error('The AI provider returned an invalid response.');
     }
 
-    // 5. Increment rate limiter on success
     rateLimiter.increment();
 
     return text;
