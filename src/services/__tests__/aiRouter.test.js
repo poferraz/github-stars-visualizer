@@ -138,7 +138,7 @@ describe('Universal AI Router', () => {
   it('should successfully make a request to the custom provider via the proxy', async () => {
     vi.stubGlobal('window', {
       location: {
-        origin: 'https://git-starmap.vercel.app',
+        origin: 'https://stars.example.test',
         protocol: 'https:'
       }
     });
@@ -159,7 +159,7 @@ describe('Universal AI Router', () => {
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://git-starmap.vercel.app/api/ai-proxy',
+      'https://stars.example.test/api/ai-proxy',
       expect.objectContaining({
         method: 'POST',
         redirect: 'error',
