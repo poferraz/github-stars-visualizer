@@ -1,73 +1,47 @@
+import { CUSTOM_ENDPOINTS } from '../src/services/providerEndpoints.js';
+
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Allow', 'POST, OPTIONS');
 
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ error: 'Method not allowed.' });
+  }
+  const contentType = req.headers?.['content-type'];
+  if (typeof contentType !== 'string' || contentType.split(';')[0].trim().toLowerCase() !== 'application/json') {
+    return res.status(415).json({ error: 'Send a JSON request.' });
   }
 
   const { targetUrl, apiKey, model, prompt } = req.body || {};
-
-  if (!targetUrl) {
-    return res.status(400).json({ error: 'Missing targetUrl' });
+  if (!CUSTOM_ENDPOINTS.includes(targetUrl)) {
+    return res.status(403).json({ error: 'Choose a supported provider endpoint.' });
   }
-
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(targetUrl);
-  } catch (err) {
-    return res.status(400).json({ error: 'Invalid targetUrl format' });
-  }
-
-  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-    return res.status(400).json({ error: 'Protocol not allowed. Only http and https are allowed.' });
-  }
-
-  // Enforce strict destination allowlist to prevent Server-Side Request Forgery (SSRF)
-  const ALLOWED_HOSTS = new Set([
-    'api.openai.com',
-    'openrouter.ai',
-    'api.groq.com',
-    'generativelanguage.googleapis.com'
-  ]);
-
-  if (!ALLOWED_HOSTS.has(parsedUrl.hostname)) {
-    return res.status(403).json({ error: 'Upstream destination host not permitted' });
+  if (![apiKey, model, prompt].every(value => typeof value === 'string' && value.trim())) {
+    return res.status(400).json({ error: 'A provider key, model and prompt are required.' });
   }
 
   try {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
-
     const upstream = await fetch(targetUrl, {
       method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      redirect: 'error',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }] })
     });
 
-    let data;
-    try {
-      data = await upstream.json();
-    } catch (e) {
-      data = {};
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: 'The provider rejected the request.' });
     }
-
+    const data = await upstream.json();
+    if (typeof data?.choices?.[0]?.message?.content !== 'string') {
+      return res.status(502).json({ error: 'The provider returned an invalid chat response.' });
+    }
     return res.status(upstream.status).json(data);
-  } catch (err) {
-    return res.status(502).json({ error: `Proxy fetch failed: ${err.message}` });
+  } catch {
+    return res.status(502).json({ error: 'Could not complete the provider request.' });
   }
 }

@@ -1,183 +1,57 @@
-<p align="center">
-  <img src="banner.png" alt="GitStars Map - Retro OS Edition" width="100%" />
-</p>
+# GitStars Map
 
-<h1 align="center">🕸️ GitStars Map - Retro OS Edition v1.0</h1>
+![GitStars Map retro desktop artwork](banner.png)
 
-<p align="center">
-  A nostalgic 90s-2000s desktop operating system environment (styled like Windows 95/98) running inside the browser to explore and map your GitHub Stars, resembling Obsidian's force-directed graph view.
-</p>
+GitStars Map turns a GitHub user's starred repositories into an interactive map on a Windows 95-style desktop. Filter by programming language or star count, zoom in, and select a repository to read its description or open it on GitHub.
 
-<p align="center">
-  <a href="https://git-starmap.vercel.app/">
-    <img src="https://img.shields.io/badge/Live_Demo-Try_It_Online-FF5733?style=for-the-badge&logo=vercel" alt="Live Demo" />
-  </a>
-</p>
+## Try the map
 
-<p align="center">
-  <strong>⚡ Try it online! Link your read-only token and explore your stars instantly: <a href="https://git-starmap.vercel.app/">git-starmap.vercel.app</a> ⚡</strong>
-</p>
+1. Open the [live app](https://git-starmap.vercel.app/). If **API Settings** is closed, double-click its desktop icon.
+2. Enter a GitHub username with public stars, leave both credential fields empty, and choose **Save & Close**.
+3. Double-click **Stars Map**. The app fetches that account's stars from GitHub. The default view includes up to 50 repositories under **Uncategorized**. Choose **Re-Sync Stars** in the map to refresh it.
 
+## Data and optional AI
 
-<p align="center">
-  <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React 19" />
-  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite" alt="Vite 8" />
-  <img src="https://img.shields.io/badge/Vitest-4-76E1FE?style=for-the-badge&logo=vitest" alt="Vitest 4" />
-  <img src="https://img.shields.io/badge/Security-Client--Side-brightgreen?style=for-the-badge&logo=shield" alt="Client-Side Only" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="MIT License" />
-</p>
+| When you use | What happens |
+| --- | --- |
+| Public stars | Your browser requests the username's starred repositories directly from GitHub. A GitHub token is optional. If you supply one, use the least access you need. The token goes to GitHub. |
+| AI grouping | Entering an AI key and running the indexer sends the selected repositories' full names, languages, and up to 150 characters of each description for analysis. The provider suggests categories, summaries, and related repositories. Built-in providers (Gemini, OpenRouter, OpenAI, and Groq) receive the AI key and prompt directly from your browser. |
+| Custom proxy | The app sends the AI key, selected endpoint, model, and prompt to its own `/api/ai-proxy` function. The function forwards the key, model, and prompt to the selected supported provider endpoint. This mode requires a deployment that runs the function. |
 
-<p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-security-first-architecture">Security Architecture</a> •
-  <a href="#%EF%B8%8F-how-it-works">How It Works</a> •
-  <a href="#-getting-started">Getting Started</a> •
-  <a href="#-technical-stack">Tech Stack</a>
-</p>
+The app keeps the GitHub token and AI key in memory until you reload, close the tab, or reset the app. Your preferences, cached repository list, analysis, and request counters stay in this browser across visits. Use the reset control to clear them on a shared device.
 
----
+The page loads its two typefaces from Google Fonts.
 
-## 🚀 Features
+The browser counts AI requests locally. Your provider sets prices and quotas, and individual requests may incur charges, including **Test Connection**. Check the billing settings for the account associated with your key before enabling AI.
 
-*   📺 **Nostalgic CRT Monitor Shader:** CSS-driven scanlines, vignetting, phosphor glowing, and subtle flicker filters that can be toggled on/off via the taskbar tray.
-*   🪟 **Draggable Retro Windows:** Multiple windows for Settings, Help, Mind Map Graph, and Properties. Windows support dragging, Z-index focusing, and minimizing.
-*   🔊 **Real-time 8-Bit Audio Synthesis:** Dynamic micro-beeps synthesized on the fly using the Web Audio API (success chirps, error buzzes, click responses, and floppy drive seek clicks during loading).
-*   🤖 **Universal Client-Side AI Router:** Connects directly from your browser to:
-    *   **Google Gemini API** (Free Tier supported natively via AI Studio)
-    *   **OpenRouter** (Aggregated access to free and cheap models)
-    *   **OpenAI** (GPT-4o-mini, custom URLs)
-    *   **Groq** (Llama 3)
-    *   **Custom Endpoints** (e.g., Ollama or custom API proxies)
-*   🛡️ **100% Billing Protection:** Built-in **Local Rate Limiter Security Guard** checks counts in `localStorage` and client-side blocks requests exceeding 15/min or 1500/day. Standard free-tier Google AI Studio accounts will return `HTTP 429` (Too Many Requests) rather than rolling over to billing.
-*   🕸️ **Obsidian-Style Mind Map:** Interactive Canvas 2D force-directed graph rendering repo and category nodes. Stars are sized logarithmically by star counts and color-coded by programming language, connected with animated data stream particles.
+## Project decisions
 
----
+I maintain GitStars Map and use AI tools to help develop it. The map gained language and popularity filters so a large collection could be narrowed down. At low zoom, small nodes were difficult to select. A later change enlarged their clickable area as the view zoomed out. [Filter change](https://github.com/poferraz/github-stars-visualizer/commit/4fc56c920d1a3d675e53c5d6a3289e0575e9dda4) · [Click-target fix](https://github.com/poferraz/github-stars-visualizer/commit/5f063c9e49924170bfbc7407c3bdf3e9005775b2)
 
-## 📸 Screenshots & Artwork
+The custom provider originally hit a browser cross-origin restriction. Adding a server-side proxy addressed that problem and made the app's server a recipient of custom-provider credentials. [Proxy change](https://github.com/poferraz/github-stars-visualizer/commit/c80616d40bf28cbb1abc6c2ba3f4af058345525f)
 
-<p align="center">
-  <img src="readme-poster.png" alt="GitStars Map Promotional Poster" width="100%" />
-</p>
+## Run locally
 
-<p align="center">
-  <img src="screenshots/Screenshot%202026-06-06%20at%2012.41.21%20PM.png" width="48%" alt="Mind Map Setup" />
-  <img src="screenshots/Screenshot%202026-06-06%20at%2012.54.34%20PM.png" width="48%" alt="Obsidian style force graph" />
-</p>
-<p align="center">
-  <img src="screenshots/Screenshot%202026-06-06%20at%2012.57.22%20PM.png" width="48%" alt="Settings and API Configuration" />
-  <img src="screenshots/Screenshot%202026-06-06%20at%2012.58.24%20PM.png" width="48%" alt="Retro CRT scanline filters" />
-</p>
+Use Node.js 24 with npm.
 
----
-
-## 🔒 Security-First Architecture
-
-We take privacy and API billing security seriously:
-
-1.  **Zero Server Backend:** No databases, no proxy servers. All API key variables are entered by visitors, saved in their browser's private `localStorage`, and executed directly to GitHub/Google endpoints.
-2.  **No Hardcoded Keys:** Your source code is 100% clean of API keys. No secrets are committed or stored on servers.
-3.  **Local Rate Limiting Guard:** Even if your API keys are loaded, the browser strictly rate-limits requests to protect you from unexpected bill spikes or API bans.
-
----
-
-## 🕹️ How It Works
-
-```mermaid
-graph TD
-    User([User's Browser]) --> OS[Retro OS Environment]
-    OS --> Graph[Canvas Force Graph Node Mapping]
-    OS --> Sounds[Web Audio API sound synthesis]
-    OS --> Shader[CRT Post-processing Shader]
-    OS --> Guard[Security Guard Rate Limiter]
-    
-    Guard --> Router[Universal Client AI Router]
-    Router --> |Direct Client Call| Gemini[Google Gemini API]
-    Router --> |Direct Client Call| OpenRouter[OpenRouter API]
-    Router --> |Direct Client Call| OpenAI[OpenAI API]
-    Router --> |Direct Client Call| Groq[Groq API]
-    
-    OS --> |Direct Client Call| GitHub[GitHub API]
-    
-    subgraph Browser Storage
-        Keys[localStorage: API Keys]
-        Cache[localStorage: Star Data & Limits]
-    end
-    
-    OS -.-> Keys
-    Guard -.-> Cache
+```sh
+git clone https://github.com/poferraz/github-stars-visualizer.git
+cd github-stars-visualizer
+npm ci
+npm run dev
 ```
 
----
+Open the local URL printed by Vite. The development server runs the desktop and the public-stars map. The custom AI route needs a Vercel-compatible function runtime.
 
-## 📦 Getting Started
+## Repository guide
 
-### Prerequisites
+- [Desktop components](src/components/) contain the settings, map window, help, and repository details.
+- [Services](src/services/) handle GitHub requests, optional AI analysis, and local request counters.
+- [Graph builder](src/utils/graphBuilder.js) turns repositories and analysis into nodes and links for the canvas.
+- [Custom AI proxy](api/ai-proxy.js) runs on the server. Its [tests](api/__tests__/) exercise the forwarding rules.
 
-You will need:
-1.  **Node.js** (v18+)
-2.  **Google Gemini API Key** (optional, but needed for AI mapping): Get one for free at [Google AI Studio](https://aistudio.google.com/).
-3.  **GitHub PAT** (optional, recommended): Generate a read-only token for public scopes on [GitHub Settings](https://github.com/settings/tokens).
+The app uses React, Vite, and the force-graph canvas renderer. See the [contributor guide](CONTRIBUTING.md) for the checks to run when changing it.
 
-### Running Locally
+## Credits
 
-1.  Clone or navigate to the directory:
-    ```bash
-    git clone https://github.com/yourusername/github-stars-visualizer.git
-    cd github-stars-visualizer
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Launch the development server:
-    ```bash
-    npm run dev
-    ```
-4.  Run unit tests (TDD suite):
-    ```bash
-    npm test
-    ```
-
----
-
-## 🏗️ Technical Stack
-
-*   **UI Framework:** React 19 + Vite 8
-*   **Graph Renderer:** Canvas-based `force-graph`
-*   **Styling:** Vanilla CSS (retro custom bevels & layouts)
-*   **Test Suite:** Vitest (15 unit tests verifying rates, routers, and graph builders)
-*   **Sound Synth:** Native HTML5 Web Audio API
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started on setting up the local dev environment, styling specifications, and TDD workflow instructions.
-
----
-
-## 💎 Credits & Open Source Acknowledgements
-
-This project was built possible by these fantastic open-source libraries, assets, and inspirations:
-
-*   **Frontend & Tooling:** [React 19](https://react.dev/), [Vite 8](https://vite.dev/), [ESLint](https://eslint.org/)
-*   **Data Visualization:** [force-graph (HTML5 Canvas)](https://github.com/vasturiano/force-graph) by Vasco Asturiano
-*   **Visualization & Physics Inspirations:**
-    *   [The R Graph Gallery - Network Analysis](https://r-graph-gallery.com/network.html)
-    *   [Flourish Studio - Network Charts](https://flourish.studio/visualisations/network-charts/)
-    *   [Gephi - Open Graph Viz Platform](https://gephi.org/)
-    *   [RawGraphs](https://www.rawgraphs.io/)
-    *   [DAGitty - Directed Acyclic Graphs](https://dagitty.net/)
-*   **AI Integration:** [@google/generative-ai SDK](https://github.com/google/generative-ai-js)
-*   **Icons:** [Lucide React](https://lucide.dev/)
-*   **Testing Suite:** [Vitest 4](https://vitest.dev/)
-*   **Typography:** [Google Fonts: VT323](https://fonts.google.com/specimen/VT323) (nostalgic pixel font) and [Google Fonts: Courier Prime](https://fonts.google.com/specimen/Courier+Prime) (monospace console font)
-*   **Visual Style & Retro Design:** Classic Windows 95/98 styling and beveled theme designs.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-
+The map uses [force-graph](https://github.com/vasturiano/force-graph) and draws on the graph view in Obsidian and network visualizations from [The R Graph Gallery](https://r-graph-gallery.com/network.html), [Flourish](https://flourish.studio/visualisations/network-charts/), [Gephi](https://gephi.org/), [RAWGraphs](https://www.rawgraphs.io/), and [DAGitty](https://dagitty.net/). The retro desktop uses the VT323 and Courier Prime typefaces.

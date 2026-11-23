@@ -1,112 +1,92 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from '../ai-proxy';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import handler from '../ai-proxy.js';
+import { CUSTOM_ENDPOINTS } from '../../src/services/providerEndpoints.js';
 
-describe('AI Proxy Security & Routing Gate', () => {
+const approved = 'https://api.openai.com/v1/chat/completions';
+
+describe('AI provider relay', () => {
   let req;
   let res;
-  let headers;
-  let statusCode;
-  let jsonBody;
-  let ended;
+  let mockFetch;
 
   beforeEach(() => {
-    headers = {};
-    statusCode = 200;
-    jsonBody = null;
-    ended = false;
-
+    req = {
+      method: 'POST',
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+      body: { targetUrl: approved, apiKey: 'test-key', model: 'test-model', prompt: 'test' }
+    };
     res = {
-      setHeader: vi.fn((k, v) => {
-        headers[k] = v;
-      }),
-      status: vi.fn((code) => {
-        statusCode = code;
-        return res;
-      }),
-      json: vi.fn((body) => {
-        jsonBody = body;
-        return res;
-      }),
-      end: vi.fn(() => {
-        ended = true;
-        return res;
-      })
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      end: vi.fn()
     };
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
   });
 
-  it('rejects SSRF attempts targeting cloud metadata endpoints (169.254.169.254)', async () => {
-    req = {
-      method: 'POST',
-      body: {
-        targetUrl: 'http://169.254.169.254/latest/meta-data/',
-        prompt: 'test'
-      }
-    };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(CUSTOM_ENDPOINTS)('sends chat requests to %s without following redirects', async targetUrl => {
+    req.body.targetUrl = targetUrl;
+    const reply = { choices: [{ message: { content: 'hello' } }] };
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => reply });
 
     await handler(req, res);
 
-    expect(statusCode).toBe(403);
-    expect(jsonBody).toEqual({ error: 'Upstream destination host not permitted' });
-  });
-
-  it('rejects SSRF attempts targeting localhost and internal networks', async () => {
-    req = {
+    expect(mockFetch).toHaveBeenCalledWith(targetUrl, {
       method: 'POST',
-      body: {
-        targetUrl: 'http://localhost:8080/admin',
-        prompt: 'test'
-      }
-    };
-
-    await handler(req, res);
-
-    expect(statusCode).toBe(403);
-    expect(jsonBody).toEqual({ error: 'Upstream destination host not permitted' });
-  });
-
-  it('rejects arbitrary unauthorized internet domains', async () => {
-    req = {
-      method: 'POST',
-      body: {
-        targetUrl: 'https://attacker-controlled-server.com/api',
-        prompt: 'test'
-      }
-    };
-
-    await handler(req, res);
-
-    expect(statusCode).toBe(403);
-    expect(jsonBody).toEqual({ error: 'Upstream destination host not permitted' });
-  });
-
-  it('allows approved AI providers (e.g. OpenAI)', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      status: 200,
-      json: async () => ({ choices: [{ message: { content: 'hello' } }] })
+      redirect: 'error',
+      credentials: 'omit',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test-key' },
+      body: JSON.stringify({ model: 'test-model', messages: [{ role: 'user', content: 'test' }] })
     });
-    global.fetch = mockFetch;
+    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(reply);
+  });
 
-    req = {
-      method: 'POST',
-      body: {
-        targetUrl: 'https://api.openai.com/v1/chat/completions',
-        apiKey: 'sk-test-key',
-        model: 'gpt-4o-mini',
-        prompt: 'say hi'
-      }
-    };
-
+  it.each([
+    'http://api.openai.com/v1/chat/completions',
+    'https://example.org/v1/chat/completions',
+    'https://api.openai.com:8443/v1/chat/completions',
+    'https://api.openai.com/v1/models',
+    approved + '?view=compact',
+    'https://visitor@api.openai.com/v1/chat/completions'
+  ])('rejects an unlisted endpoint before sending anything', async targetUrl => {
+    req.body.targetUrl = targetUrl;
     await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
 
-    expect(statusCode).toBe(200);
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.openai.com/v1/chat/completions',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer sk-test-key'
-        })
-      })
-    );
+  it.each(['model', 'apiKey', 'prompt'])('requires a nonempty %s', async name => {
+    req.body[name] = ' ';
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('requires JSON for browser requests', async () => {
+    req.headers = { 'content-type': 'text/plain' };
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(415);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('preserves a provider error status and omits its diagnostics', async () => {
+    const json = vi.fn();
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 429, json });
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith({ error: 'The provider rejected the request.' });
+    expect(json).not.toHaveBeenCalled();
+  });
+
+  it('returns a generic error on network failure', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('provider diagnostics'));
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(502);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Could not complete the provider request.' });
   });
 });

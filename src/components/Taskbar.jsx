@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { audio } from '../utils/audio';
 
 export default function Taskbar({ 
@@ -104,7 +104,7 @@ export default function Taskbar({
               <div 
                 className="start-menu-item"
                 onClick={() => handleStartItemClick(() => {
-                  if (window.confirm('WARNING: This will delete all cached stars and local API tokens. Continue?')) {
+                  if (window.confirm('Clear your saved preferences, cached stars, AI results and local request counts, and forget the keys in this tab?')) {
                     onResetAll();
                   }
                 })}

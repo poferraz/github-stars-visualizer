@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { aiRouter } from '../aiRouter';
 import { rateLimiter } from '../rateLimiter';
 
@@ -12,13 +12,15 @@ vi.mock('../rateLimiter', () => ({
 
 // Mock global fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 describe('Universal AI Router', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockReset();
+    vi.stubGlobal('fetch', mockFetch);
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('should throw an error if no API key is provided', async () => {
     await expect(
@@ -74,6 +76,8 @@ describe('Universal AI Router', () => {
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
       expect.objectContaining({
         method: 'POST',
+        redirect: 'error',
+        credentials: 'omit',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
           'x-goog-api-key': 'gemini-fake-key'
@@ -103,6 +107,8 @@ describe('Universal AI Router', () => {
       'https://openrouter.ai/api/v1/chat/completions',
       expect.objectContaining({
         method: 'POST',
+        redirect: 'error',
+        credentials: 'omit',
         headers: expect.objectContaining({
           'Authorization': 'Bearer openrouter-fake-key',
           'Content-Type': 'application/json'
@@ -132,7 +138,8 @@ describe('Universal AI Router', () => {
   it('should successfully make a request to the custom provider via the proxy', async () => {
     vi.stubGlobal('window', {
       location: {
-        origin: 'https://git-starmap.vercel.app'
+        origin: 'https://git-starmap.vercel.app',
+        protocol: 'https:'
       }
     });
 
@@ -146,28 +153,67 @@ describe('Universal AI Router', () => {
     const response = await aiRouter.sendMessage({
       provider: 'custom',
       apiKey: 'custom-fake-key',
-      model: 'gpt-oss:20b',
+      model: 'test-model',
       prompt: 'Summarize these stars',
-      customUrl: 'https://ollama.com/v1/chat/completions'
+      customUrl: 'https://api.openai.com/v1/chat/completions'
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://git-starmap.vercel.app/api/ai-proxy',
       expect.objectContaining({
         method: 'POST',
+        redirect: 'error',
+        credentials: 'omit',
         headers: expect.objectContaining({
           'Content-Type': 'application/json'
         }),
         body: JSON.stringify({
-          targetUrl: 'https://ollama.com/v1/chat/completions',
+          targetUrl: 'https://api.openai.com/v1/chat/completions',
           apiKey: 'custom-fake-key',
-          model: 'gpt-oss:20b',
+          model: 'test-model',
           prompt: 'Summarize these stars'
         })
       })
     );
     expect(response).toBe('Custom proxy response');
+  });
 
-    vi.unstubAllGlobals();
+  it.each([
+    ['openai', 'https://api.openai.com/v1/chat/completions'],
+    ['groq', 'https://api.groq.com/openai/v1/chat/completions']
+  ])('uses the built-in %s endpoint when an old custom setting exists', async (provider, endpoint) => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'hello' } }] })
+    });
+    await aiRouter.sendMessage({
+      provider, apiKey: 'test-key', prompt: 'hello', customUrl: 'https://example.org/old-setting'
+    });
+    expect(mockFetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({ redirect: 'error' }));
+  });
+
+  it('rejects an unlisted custom endpoint before sending the key to the relay', async () => {
+    await expect(aiRouter.sendMessage({
+      provider: 'custom', apiKey: 'test-key', prompt: 'hello', customUrl: 'https://example.org/chat'
+    })).rejects.toThrow('Choose a supported provider endpoint.');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('requires HTTPS for the browser-to-relay request', async () => {
+    vi.stubGlobal('window', { location: new URL('http://example.org') });
+    await expect(aiRouter.sendMessage({
+      provider: 'custom', apiKey: 'test-key', prompt: 'hello', customUrl: 'https://api.openai.com/v1/chat/completions'
+    })).rejects.toThrow('Open this app over HTTPS');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('reports a provider error without reading its diagnostics', async () => {
+    const json = vi.fn();
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json });
+    await expect(aiRouter.sendMessage({
+      provider: 'openai', apiKey: 'test-key', prompt: 'hello'
+    })).rejects.toThrow('API request failed with status 401.');
+    expect(json).not.toHaveBeenCalled();
+    expect(rateLimiter.increment).not.toHaveBeenCalled();
   });
 });

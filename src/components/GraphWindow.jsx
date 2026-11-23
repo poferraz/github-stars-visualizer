@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ForceGraph from 'force-graph';
 import { forceCollide } from 'd3-force-3d';
 import { audio } from '../utils/audio';
@@ -26,11 +26,13 @@ export default function GraphWindow({
 
   // Store dynamic props in refs for canvas rendering and event handlers
   const searchQueryRef = useRef(searchQuery);
-  searchQueryRef.current = searchQuery;
   const selectedNodeIdRef = useRef(selectedNodeId);
-  selectedNodeIdRef.current = selectedNodeId;
   const onSelectNodeRef = useRef(onSelectNode);
-  onSelectNodeRef.current = onSelectNode;
+  useLayoutEffect(() => {
+    searchQueryRef.current = searchQuery;
+    selectedNodeIdRef.current = selectedNodeId;
+    onSelectNodeRef.current = onSelectNode;
+  }, [searchQuery, selectedNodeId, onSelectNode]);
 
   // Node drawing logic used by both initial mount and redraw triggers
   const drawNode = (node, ctx, globalScale) => {
@@ -97,6 +99,12 @@ export default function GraphWindow({
 
     const graph = ForceGraph()(containerRef.current)
       .nodeId('id')
+      .nodeLabel(node => {
+        // The tooltip library treats string labels as HTML.
+        const label = document.createElement('span');
+        label.textContent = node.name;
+        return label;
+      })
       .nodeVal('val')
       .nodeColor('color')
       .linkColor(link => link.type === 'semantic_connection' ? '#00ffff' : '#808080')

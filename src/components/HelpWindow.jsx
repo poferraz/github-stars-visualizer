@@ -1,4 +1,3 @@
-import React from 'react';
 import { audio } from '../utils/audio';
 
 export default function HelpWindow({ onClose }) {
@@ -11,7 +10,7 @@ export default function HelpWindow({ onClose }) {
       </div>
 
       <p style={{ marginBottom: '12px' }}>
-        This program connects to your GitHub account, downloads your starred repositories, and uses AI to index, categorize, and forge semantic maps showing how your stars relate to each other—rendering them in an interactive, 3D-simulated canvas.
+        Explore GitHub stars as a graph. You can browse by language or use an AI provider to suggest summaries, categories and related repositories.
       </p>
 
       {/* Guide Group */}
@@ -19,41 +18,20 @@ export default function HelpWindow({ onClose }) {
         <legend style={{ padding: '0 4px', fontWeight: 'bold' }}>🚀 Quick Setup Guide</legend>
         
         <ol style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <li>
-            <strong>Configure Credentials:</strong> Open the <strong>API Settings</strong> window from the desktop icon or Start menu.
-          </li>
-          <li>
-            <strong>GitHub Username:</strong> Enter your public GitHub username.
-          </li>
-          <li>
-            <strong>GitHub PAT Token (Optional but Recommended):</strong> 
-            {' '}To avoid API rate limits, generate a fine-grained token with "Read-only access to public repositories" on 
-            {' '}<a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noreferrer" onClick={() => audio.playClick()} style={{ color: '#00f', textDecoration: 'underline' }}>GitHub Settings ↗</a>{' '}.
-          </li>
-          <li>
-            <strong>Get a FREE AI API Key:</strong> Get a free Gemini API key on 
-            {' '}<a href="https://aistudio.google.com/" target="_blank" rel="noreferrer" onClick={() => audio.playClick()} style={{ color: '#00f', textDecoration: 'underline' }}>Google AI Studio ↗</a>{' '}.
-            The free tier allows 15 requests/min and 1500 requests/day, which is completely free!
-          </li>
-          <li>
-            <strong>Execute indexer:</strong> Click <strong>Save & Close</strong> in Settings, then double-click <strong>Stars Map</strong> on the desktop to scan!
-          </li>
+          <li>Open <strong>API Settings</strong> and enter the GitHub username whose public stars you want to explore.</li>
+          <li>You can leave the GitHub token blank. If you need a higher request limit, use a token with read-only access to public repositories. <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noreferrer" onClick={() => audio.playClick()} style={{ color: '#00f', textDecoration: 'underline' }}>GitHub token settings ↗</a></li>
+          <li>For AI analysis, choose a provider and enter a key for that provider. Leave the key blank to browse a graph with language filters.</li>
+          <li>Click <strong>Save &amp; Close</strong>, then double-click <strong>Stars Map</strong> to open the graph or start your first scan.</li>
         </ol>
       </fieldset>
 
       {/* Security Group */}
       <fieldset className="win95-raised" style={{ padding: '10px', marginBottom: '12px' }}>
-        <legend style={{ padding: '0 4px', fontWeight: 'bold' }}>🛡️ Security & Safe Billing</legend>
+        <legend style={{ padding: '0 4px', fontWeight: 'bold' }}>🛡️ Privacy and billing</legend>
         <ul style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <li>
-            <strong>100% Serverless:</strong> Your credentials are saved strictly in your browser's private <code style={{ fontFamily: 'var(--font-mono)' }}>localStorage</code>. No external server receives your keys.
-          </li>
-          <li>
-            <strong>No Auto-Billing:</strong> If you use Google AI Studio without linking a billing Cloud Console account, Google will **never** charge you. Once you hit the limit, requests simply fail with a `429 Too Many Requests` code.
-          </li>
-          <li>
-            <strong>Local Guardrails:</strong> Our built-in rate limiter monitors your requests per-minute and per-day in local storage, blocking requests client-side before they can reach the limits.
-          </li>
+          <li>API keys stay in tab memory until you reload or close it. The browser saves your preferences, repository data, AI results and local request counts. The Start menu’s <strong>Format Cache &amp; Keys</strong> clears these and forgets the keys in this tab.</li>
+          <li>Your GitHub token goes to GitHub. With AI enabled, your chosen provider receives the AI key and a prompt containing repository names, descriptions and languages. Custom endpoint mode sends the key and prompt through this site’s relay to the selected endpoint.</li>
+          <li>Testing a connection also sends a request to your provider. The app counts successful AI requests locally. Your account, model and provider determine your actual quota and charges.</li>
         </ul>
       </fieldset>
 
