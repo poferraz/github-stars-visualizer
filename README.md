@@ -6,11 +6,13 @@ GitStars Map turns a GitHub user's starred repositories into an interactive map 
 
 ## Try the map
 
+The hosted demo currently runs an older version that saves entered keys in browser storage. **Leave both credential fields empty on the hosted demo.** If you previously entered keys there, clear that site’s browser data. To use credentials, run the current source locally as described below.
+
 1. Open the [live app](https://git-starmap.vercel.app/). If **API Settings** is closed, double-click its desktop icon.
 2. Enter a GitHub username with public stars, leave both credential fields empty, and choose **Save & Close**.
 3. Double-click **Stars Map**. The app fetches that account's stars from GitHub. The default view includes up to 50 repositories under **Uncategorized**. Choose **Re-Sync Stars** in the map to refresh it.
 
-## Data and optional AI
+## How the current source handles data and optional AI
 
 | When you use | What happens |
 | --- | --- |
